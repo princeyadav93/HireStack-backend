@@ -1,8 +1,11 @@
 import http from 'http';
 import app from './app';
 import { ENV } from './config/env';
+import { connectDB } from './config/mongodb';
 
 const server = http.createServer(app);
+
+connectDB();
 
 server.listen(ENV.PORT, () => {
     console.log(`🚀 Server running on port ${ENV.PORT}`);
