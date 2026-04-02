@@ -16,4 +16,5 @@ function getEnv(key: string, defaultvalue?: string): string {
 export const ENV = {
     PORT: getEnv('PORT', '3000'),
     MONGODB_URI: getEnv('MONGODB_URI', 'null'),
+    JWT_SECRET: getEnv('JWT_SECRET', 'null'),
 };
