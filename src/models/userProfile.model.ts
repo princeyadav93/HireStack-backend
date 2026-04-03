@@ -1,17 +1,25 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
-export interface IProfile extends Document {
+export interface ICandidateProfile extends Document {
     user: Types.ObjectId;
+
     skills: string[];
+
     projects: {
-        projectUrl: string;
+        projectUrl?: string;
         projectName: string;
-        projectDesc: string;
+        projectDesc?: string;
         techStack: string[];
     }[];
-    resumeUrl?: string;
+
+    resume: {
+        url?: string;
+        uploadedAt?: Date;
+    };
+
     github?: string;
     linkedin?: string;
+
     preferences: {
         desiredRole?: string;
         expectedSalary?: number;
@@ -19,65 +27,87 @@ export interface IProfile extends Document {
         remote?: boolean;
         jobType?: 'FULL_TIME' | 'PART_TIME' | 'INTERNSHIP';
     };
+
     experience: {
         company: string;
         role: string;
-        years: number;
         startDate: Date;
         endDate?: Date;
     }[];
+
     education: {
         degree: string;
         college: string;
         year: number;
     }[];
+
+    profileCompletion: number;
+
     createdAt: Date;
     updatedAt: Date;
 }
 
-const userProfileSchema = new Schema<IProfile>(
+const candidateProfileSchema = new Schema<ICandidateProfile>(
     {
         user: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,
             unique: true, // one profile per user
+            index: true,
         },
 
         skills: [
             {
                 type: String,
+                lowercase: true,
                 trim: true,
             },
         ],
 
         projects: [
             {
+                _id: false,
                 projectUrl: { type: String, trim: true },
                 projectName: { type: String, required: true, trim: true },
                 projectDesc: { type: String, trim: true },
-                techStack: [{ type: String }],
+                techStack: [
+                    {
+                        type: String,
+                        lowercase: true,
+                        trim: true,
+                    },
+                ],
             },
         ],
 
-        resumeUrl: {
-            type: String,
+        resume: {
+            url: { type: String },
+            uploadedAt: { type: Date },
         },
 
         github: {
             type: String,
             trim: true,
+            match: /^(https?:\/\/)?(www\.)?github\.com\/.+$/i,
         },
 
         linkedin: {
             type: String,
             trim: true,
+            match: /^(https?:\/\/)?(www\.)?linkedin\.com\/.+$/i,
         },
 
         preferences: {
-            desiredRole: { type: String },
+            desiredRole: { type: String, trim: true },
             expectedSalary: { type: Number },
-            locations: [{ type: String }],
+            locations: [
+                {
+                    type: String,
+                    lowercase: true,
+                    trim: true,
+                },
+            ],
             remote: { type: Boolean, default: false },
             jobType: {
                 type: String,
@@ -87,28 +117,47 @@ const userProfileSchema = new Schema<IProfile>(
 
         experience: [
             {
-                company: { type: String, required: true },
-                role: { type: String, required: true },
-                years: { type: Number, min: 0 },
-                startDate: { type: Date },
+                _id: false,
+                company: { type: String, required: true, trim: true },
+                role: { type: String, required: true, trim: true },
+                startDate: { type: Date, required: true },
                 endDate: { type: Date },
             },
         ],
 
         education: [
             {
-                degree: { type: String },
-                college: { type: String },
+                _id: false,
+                degree: { type: String, trim: true },
+                college: { type: String, trim: true },
                 year: { type: Number },
             },
         ],
+
+        profileCompletion: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,
     },
 );
 
-export const UserProfile = mongoose.model<IProfile>(
-    'UserProfile',
-    userProfileSchema,
+// Single field indexes
+candidateProfileSchema.index({ skills: 1 });
+candidateProfileSchema.index({ 'preferences.desiredRole': 1 });
+candidateProfileSchema.index({ 'preferences.locations': 1 });
+candidateProfileSchema.index({ 'preferences.remote': 1 });
+
+// Compound index for search
+candidateProfileSchema.index({
+    skills: 1,
+    'preferences.locations': 1,
+    'preferences.desiredRole': 1,
+});
+
+export const CandidateProfile = mongoose.model<ICandidateProfile>(
+    'CandidateProfile',
+    candidateProfileSchema,
 );
