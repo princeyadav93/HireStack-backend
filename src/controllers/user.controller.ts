@@ -37,3 +37,20 @@ export const loginUser = async (
         next(err);
     }
 };
+
+export const logoutUser = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        res.clearCookie('token', COOKIE_OPTIONS);
+
+        res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: 'Logged out successfully',
+        });
+    } catch (error) {
+        next(error);
+    }
+};
