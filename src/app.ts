@@ -35,7 +35,10 @@ app.get('/', (_, res) => {
 
 // route declarations
 import userRouter from './routes/user.route';
+import userProfileRouter from './routes/userProfile.route';
 app.use('/user', userRouter);
+
+app.use('/user/profile', userProfileRouter);
 
 // 404 handler
 app.use(notFoundHandler);
