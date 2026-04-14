@@ -1,61 +1,102 @@
-import { ProfileInput } from '../dtos/userProfile.dto';
+import { ICandidateProfile } from '../models/userProfile.model';
 
-// ✅ normalize
-export const normalize = (data: ProfileInput): ProfileInput => {
-    if (data.skills) {
-        data.skills = [
-            ...new Set(data.skills.map((s) => s.toLowerCase().trim())),
-        ];
+export const calculateProfileCompletion = (
+    profile: ICandidateProfile,
+): number => {
+    let score = 0;
+    const TOTAL = 100;
+
+    const weights = {
+        skills: 15,
+        projects: 20,
+        experience: 20,
+        education: 15,
+        resume: 15,
+        social: 5,
+        preferences: 10,
+    };
+
+    if (profile.skills?.length) score += weights.skills;
+
+    if (profile.projects?.length) score += weights.projects;
+
+    if (profile.experience?.length) score += weights.experience;
+
+    if (profile.education?.length) score += weights.education;
+
+    if (profile.resume?.url) score += weights.resume;
+
+    if (profile.github || profile.linkedin) score += weights.social;
+
+    if (profile.preferences && Object.keys(profile.preferences).length > 0) {
+        score += weights.preferences;
     }
 
-    if (data.preferences?.locations) {
-        data.preferences.locations = [
-            ...new Set(
-                data.preferences.locations.map((l) => l.toLowerCase().trim()),
-            ),
-        ];
-    }
-
-    return data;
+    return Math.min(score, TOTAL);
 };
 
-// ✅ safe flatten
-export const flatten = (obj: any, prefix = ''): Record<string, any> => {
-    let res: Record<string, any> = {};
+// ✅ Safe flatten: converts nested objects to dot-notation keys
+export const flatten = (
+    obj: Record<string, any>,
+    prefix = '',
+): Record<string, any> => {
+    let result: Record<string, any> = {};
 
-    for (let key in obj) {
-        if (key.startsWith('$')) continue; // 🔒 prevent injection
+    for (const key in obj) {
+        if (!obj.hasOwnProperty(key)) continue;
 
         const value = obj[key];
         const newKey = prefix ? `${prefix}.${key}` : key;
 
-        if (value && typeof value === 'object' && !Array.isArray(value)) {
-            Object.assign(res, flatten(value, newKey));
+        // Skip undefined (VERY IMPORTANT)
+        if (value === undefined) continue;
+
+        // Handle arrays (DO NOT FLATTEN ARRAYS)
+        if (Array.isArray(value)) {
+            result[newKey] = value;
+            continue;
+        }
+
+        // Handle nested objects
+        if (
+            typeof value === 'object' &&
+            value !== null &&
+            !(value instanceof Date)
+        ) {
+            const nested = flatten(value, newKey);
+            result = { ...result, ...nested };
         } else {
-            res[newKey] = value;
+            result[newKey] = value;
         }
     }
 
-    return res;
+    return result;
 };
 
 // ✅ build mongo update query
-export const buildUpdateQuery = (data: ProfileInput) => {
+export const buildUpdateQuery = (data: Record<string, any>) => {
+    const setData: Record<string, any> = {};
+    const unsetData: Record<string, any> = {};
+
     const flat = flatten(data);
 
-    const update: any = {
-        $set: {},
-    };
-
-    for (let key in flat) {
-        if (key === 'skills') {
-            update.$addToSet = {
-                skills: { $each: flat[key] },
-            };
+    for (const key in flat) {
+        if (flat[key] === null) {
+            unsetData[key] = '';
         } else {
-            update.$set[key] = flat[key];
+            setData[key] = flat[key];
         }
     }
 
-    return update;
+    const updateQuery: any = {};
+
+    if (Object.keys(setData).length) {
+        updateQuery.$set = setData;
+    }
+
+    if (Object.keys(unsetData).length) {
+        updateQuery.$unset = unsetData;
+    }
+
+    return updateQuery;
 };

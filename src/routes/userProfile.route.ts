@@ -2,18 +2,31 @@ import express from 'express';
 import { upload } from '../middleware/upload';
 import { uploadResumeController } from '../controllers/userProfile.controller';
 import { verifyJWT } from '../middleware/auth.middleware';
-import { upsertProfileController } from '../controllers/userProfile.controller';
 
 const router = express.Router();
 
-router.post(
+router.patch(
     '/resume',
     verifyJWT,
     upload.single('resume'),
     uploadResumeController,
 );
 
-router.post('/create', verifyJWT, upsertProfileController);
-router.patch('/update', verifyJWT, upsertProfileController);
+import {
+    updateBasicProfile,
+    updateProjects,
+    updateExperience,
+    updateEducation,
+    updatePreferences,
+} from '../controllers/userProfile.controller';
+
+// All routes protected
+
+// PATCH routes
+router.patch('/basic', verifyJWT, updateBasicProfile);
+router.patch('/projects', verifyJWT, updateProjects);
+router.patch('/experience', verifyJWT, updateExperience);
+router.patch('/education', verifyJWT, updateEducation);
+router.patch('/preferences', verifyJWT, updatePreferences);
 
 export default router;

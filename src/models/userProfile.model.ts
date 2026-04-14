@@ -13,6 +13,7 @@ export interface ICandidateProfile extends Document {
     }[];
 
     resume: {
+        fileName?: string;
         url?: string;
         uploadedAt?: Date;
     };
@@ -22,9 +23,9 @@ export interface ICandidateProfile extends Document {
 
     preferences: {
         desiredRole?: string;
-        expectedSalary?: number;
+        expectedSalary?: number | 0;
         locations?: string[];
-        remote?: boolean;
+        remote?: boolean | false;
         jobType?: 'FULL_TIME' | 'PART_TIME' | 'INTERNSHIP';
     };
 
@@ -71,13 +72,10 @@ const candidateProfileSchema = new Schema<ICandidateProfile>(
                 projectUrl: { type: String, trim: true },
                 projectName: { type: String, required: true, trim: true },
                 projectDesc: { type: String, trim: true },
-                techStack: [
-                    {
-                        type: String,
-                        lowercase: true,
-                        trim: true,
-                    },
-                ],
+                techStack: {
+                    type: [String],
+                    default: [],
+                },
             },
         ],
 

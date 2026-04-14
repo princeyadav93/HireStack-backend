@@ -1,7 +1,10 @@
+// Dynamic CORS: require production HTTPS for cookies
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const COOKIE_OPTIONS = {
     httpOnly: true,
-    secure: true, // set true in production (HTTPS only)
-    sameSite: 'lax' as const,
+    secure: isProduction, // HTTPS only in production
+    sameSite: isProduction ? ('strict' as const) : ('lax' as const),
     maxAge: 24 * 60 * 60 * 1000, // 1 day
 };
 

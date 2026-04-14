@@ -1,7 +1,5 @@
-import mongoose, { Schema, Document, CallbackError } from 'mongoose';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { ENV } from '../config/env'; // adjust path as needed
+import mongoose, { Schema, Document } from 'mongoose';
+import bcrypt from 'bcrypt';
 
 // ─── Interface ───────────────────────────────────────────────
 export interface IUser extends Document {
@@ -40,9 +38,6 @@ const userSchema = new Schema<IUser>(
             minlength: 6,
             select: false,
         },
-        resume: {
-            type: String,
-        },
     },
     {
         timestamps: true,
@@ -55,31 +50,6 @@ userSchema.methods.isPasswordCorrect = async function (
 ): Promise<boolean> {
     return await bcrypt.compare(password, this.password);
 };
-
-// userSchema.methods.accessTokenGenerate = function (): string {
-//     return jwt.sign(
-//         {
-//             _id: this._id,
-//             email: this.email,
-//         },
-//         getEnv('ACCESS_TOKEN_SECRET'),
-//         {
-//             expiresIn: getEnv('ACCESS_TOKEN_EXPIRY'),
-//         } as jwt.SignOptions,
-//     );
-// };
-
-// userSchema.methods.refreshTokenGenerate = function (): string {
-//     return jwt.sign(
-//         {
-//             _id: this._id,
-//         },
-//         getEnv('REFRESH_TOKEN_SECRET'),
-//         {
-//             expiresIn: getEnv('REFRESH_TOKEN_EXPIRY'),
-//         } as jwt.SignOptions,
-//     );
-// };
 
 // ─── Export ──────────────────────────────────────────────────
 export const User = mongoose.model<IUser>('User', userSchema);

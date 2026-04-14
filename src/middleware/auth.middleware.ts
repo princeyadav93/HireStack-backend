@@ -15,7 +15,7 @@ declare global {
 
 export const verifyJWT = async (
     req: Request,
-    res: Response,
+    _res: Response,
     next: NextFunction,
 ) => {
     try {

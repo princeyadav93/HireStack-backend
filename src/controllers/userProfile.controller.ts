@@ -1,49 +1,74 @@
 import { Request, Response } from 'express';
 import { uploadResume } from '../services/userProfile.service';
-import { upsertProfileService } from '../services/userProfile.service';
-import console from 'console';
+import { updateProfileSection } from '../services/userProfile.service';
+import { ZodType } from 'zod';
+import { ICandidateProfile } from '../models/userProfile.model';
+import { asyncHandler } from '../utils/asyncHandler';
+import {
+    BasicProfileDTO,
+    ProjectsDTO,
+    ExperienceDTO,
+    EducationDTO,
+    PreferencesDTO,
+} from '../dtos/userProfile.dto';
 
-export const uploadResumeController = async (req: Request, res: Response) => {
-    try {
+export const uploadResumeController = asyncHandler(
+    async (req: Request, res: Response) => {
         const userId = req.user?.id;
 
         if (!userId) {
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({
+                success: false,
+                message: 'Unauthorized',
+            });
+            return;
         }
 
-        const file = req.file;
+        if (!req.file) {
+            res.status(400).json({
+                success: false,
+                message: 'No file uploaded',
+            });
+            return;
+        }
 
-        const profile = await uploadResume(userId, file!);
+        const profile = await uploadResume(userId, req.file);
 
-        return res.status(200).json({
-            message: 'Resume uploaded',
-            profile,
+        res.status(200).json({
+            success: true,
+            message: 'Resume uploaded successfully',
+            data: profile,
         });
-    } catch (err) {
-        return res.status(500).json({
-            message: 'Upload failed',
-            err,
-        });
-    }
-};
+    },
+);
 
-export const upsertProfileController = async (req: Request, res: Response) => {
-    try {
+export const createProfileUpdater = <T extends Partial<ICandidateProfile>>(
+    schema: ZodType<T>,
+) => {
+    return asyncHandler(async (req: Request, res: Response) => {
         const userId = req.user?.id;
 
         if (!userId) {
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({
+                success: false,
+                message: 'Unauthorized',
+            });
+            return;
         }
 
-        const profile = await upsertProfileService(userId, req.body);
+        const parsedData: T = schema.parse(req.body);
 
-        return res.status(200).json({
-            message: 'Profile saved',
-            profile,
+        const updatedProfile = await updateProfileSection(userId, parsedData);
+
+        res.status(200).json({
+            success: true,
+            data: updatedProfile,
         });
-    } catch (err: any) {
-        return res.status(400).json({
-            message: err.message || 'Failed to update profile',
-        });
-    }
+    });
 };
+
+export const updateBasicProfile = createProfileUpdater(BasicProfileDTO);
+export const updateProjects = createProfileUpdater(ProjectsDTO);
+export const updateExperience = createProfileUpdater(ExperienceDTO);
+export const updateEducation = createProfileUpdater(EducationDTO);
+export const updatePreferences = createProfileUpdater(PreferencesDTO);

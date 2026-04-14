@@ -1,15 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
+import { ApiError } from '../utils/ApiError';
 
 export const errorHandler = (
     err: any,
-    req: Request,
+    _req: Request,
     res: Response,
-    next: NextFunction,
+    _next: NextFunction,
 ) => {
-    const statusCode = err.statusCode || 500;
+    // Default to 500 if statusCode is missing
+    const statusCode =
+        err instanceof ApiError ? err.statusCode : err.statusCode || 500;
+    const message = err.message || 'Internal Server Error';
+
+    // Log errors in development
+    if (process.env.NODE_ENV !== 'production') {
+        console.error('❌ Error:', {
+            statusCode,
+            message,
+            stack: err.stack,
+        });
+    }
 
     res.status(statusCode).json({
         success: false,
-        message: err.message || 'Internal Server Error',
+        message,
+        // Include error array if present (for validation errors)
+        ...(err.error && Array.isArray(err.error) && { errors: err.error }),
     });
 };

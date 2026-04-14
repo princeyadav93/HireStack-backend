@@ -13,14 +13,32 @@ function getEnv(key: string, defaultvalue?: string): string {
     return value;
 }
 
+// Validate required env vars
+const requiredEnvVars = [
+    'MONGODB_URI',
+    'JWT_SECRET',
+    'CLOUDINARY_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET',
+    'SALTROUNDS',
+];
+
+for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+        throw new Error(`❌ Required environment variable missing: ${envVar}`);
+    }
+}
+
 export const ENV = {
     PORT: getEnv('PORT', '3000'),
-    MONGODB_URI: getEnv('MONGODB_URI', 'null'),
-    JWT_SECRET: getEnv('JWT_SECRET', 'null'),
-    CORS_ORIGIN: getEnv('CORS_ORIGIN', '*'),
-    REFRESH_TOKEN_SECRET: getEnv('REFRESH_TOKEN_SECRET', 'null'),
+    MONGODB_URI: getEnv('MONGODB_URI'),
+    JWT_SECRET: getEnv('JWT_SECRET'),
+    CORS_ORIGIN: getEnv('CORS_ORIGIN', 'http://localhost:3000'),
+    REFRESH_TOKEN_SECRET: getEnv('REFRESH_TOKEN_SECRET', getEnv('JWT_SECRET')),
     REFRESH_TOKEN_EXPIRY: getEnv('REFRESH_TOKEN_EXPIRY', '10d'),
-    CLOUDINARY_NAME: getEnv('CLOUDINARY_NAME', 'null'),
-    CLOUDINARY_API_KEY: getEnv('CLOUDINARY_API_KEY', 'null'),
-    CLOUDINARY_API_SECRET: getEnv('CLOUDINARY_API_SECRET', 'null'),
+    CLOUDINARY_NAME: getEnv('CLOUDINARY_NAME'),
+    CLOUDINARY_API_KEY: getEnv('CLOUDINARY_API_KEY'),
+    CLOUDINARY_API_SECRET: getEnv('CLOUDINARY_API_SECRET'),
+    NODE_ENV: getEnv('NODE_ENV', 'development'),
+    SALTROUNDS: parseInt(getEnv('SALTROUNDS')),
 };

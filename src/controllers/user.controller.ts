@@ -4,53 +4,46 @@ import {
     loginUserService,
 } from '../services/user.service';
 import { COOKIE_OPTIONS, HTTP_STATUS } from '../constants';
+import { RegisterDTO, LoginDTO } from '../dtos/user.dto';
+import { asyncHandler } from '../utils/asyncHandler';
 
-export const registerUser = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-    try {
-        console.log(req.body);
-        const { user, token } = await registerUserService(req.body);
+export const registerUser = asyncHandler(
+    async (req: Request, res: Response, _next: NextFunction) => {
+        const parsed = RegisterDTO.parse(req.body);
 
-        res.cookie('token', token, COOKIE_OPTIONS);
+        const result = await registerUserService(parsed);
 
-        res.status(HTTP_STATUS.CREATED).json(user);
-    } catch (err) {
-        next(err);
-    }
-};
+        res.cookie('token', result.token, COOKIE_OPTIONS);
 
-export const loginUser = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-    try {
-        const { user, token } = await loginUserService(req.body);
+        res.status(HTTP_STATUS.CREATED).json({
+            success: true,
+            data: result,
+        });
+    },
+);
+
+export const loginUser = asyncHandler(
+    async (req: Request, res: Response, _next: NextFunction) => {
+        const parsed = LoginDTO.parse(req.body);
+
+        const { user, token } = await loginUserService(parsed);
 
         res.cookie('token', token, COOKIE_OPTIONS);
 
-        res.status(HTTP_STATUS.OK).json(user);
-    } catch (err) {
-        next(err);
-    }
-};
+        res.status(HTTP_STATUS.OK).json({
+            success: true,
+            data: { user, token },
+        });
+    },
+);
 
-export const logoutUser = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-    try {
+export const logoutUser = asyncHandler(
+    async (_req: Request, res: Response, _next: NextFunction) => {
         res.clearCookie('token', COOKIE_OPTIONS);
 
         res.status(HTTP_STATUS.OK).json({
             success: true,
             message: 'Logged out successfully',
         });
-    } catch (error) {
-        next(error);
-    }
-};
+    },
+);
