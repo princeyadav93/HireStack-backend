@@ -33,6 +33,7 @@ export const registerUserService = async (
                     name,
                     email,
                     password: hashedPassword,
+                    role: 'candidate',
                 },
             ],
             { session },
@@ -40,7 +41,6 @@ export const registerUserService = async (
 
         const user = userDocs[0];
 
-        // 🔥 PROFILE CREATED IN SAME TRANSACTION
         await createProfileIfNotExists(user._id.toString(), session);
 
         await session.commitTransaction();

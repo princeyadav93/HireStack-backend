@@ -6,7 +6,7 @@ export interface IUser extends Document {
     name: string;
     email: string;
     password: string;
-    resume?: string;
+    role: string;
 
     // Custom methods
     isPasswordCorrect(password: string): Promise<boolean>;
@@ -37,6 +37,11 @@ const userSchema = new Schema<IUser>(
             required: true,
             minlength: 6,
             select: false,
+        },
+        role: {
+            type: String,
+            enum: ['candidate', 'recruiter', 'admin'],
+            default: 'candidate',
         },
     },
     {
