@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { uploadResume } from '../services/userProfile.service';
-import { updateProfileSection } from '../services/userProfile.service';
+import { uploadResume } from '../services/candidateProfile.service';
+import { updateProfileSection } from '../services/candidateProfile.service';
 import { ZodType } from 'zod';
-import { ICandidateProfile } from '../models/userProfile.model';
+import { ICandidateProfile } from '../models/candidateProfile.model';
 import { asyncHandler } from '../utils/asyncHandler';
 import {
     BasicProfileDTO,
@@ -10,7 +10,7 @@ import {
     ExperienceDTO,
     EducationDTO,
     PreferencesDTO,
-} from '../dtos/userProfile.dto';
+} from '../dtos/candidateProfile.dto';
 
 export const uploadResumeController = asyncHandler(
     async (req: Request, res: Response) => {
@@ -67,6 +67,7 @@ export const createProfileUpdater = <T extends Partial<ICandidateProfile>>(
     });
 };
 
+// Candidate profile endpoints
 export const updateBasicProfile = createProfileUpdater(BasicProfileDTO);
 export const updateProjects = createProfileUpdater(ProjectsDTO);
 export const updateExperience = createProfileUpdater(ExperienceDTO);

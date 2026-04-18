@@ -1,28 +1,5 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
-
-export interface ICompany extends Document {
-    name: string;
-    industry: string;
-    size: 'STARTUP' | 'SMALL' | 'MEDIUM' | 'LARGE' | 'ENTERPRISE';
-    description?: string;
-    website?: string;
-    logo?: {
-        url?: string;
-        fileName?: string;
-        uploadedAt?: Date;
-    };
-    location?: {
-        city: string;
-        state?: string;
-        country: string;
-    };
-    recruiterCount: number;
-    createdBy: mongoose.Types.ObjectId; // First recruiter who created the company
-    status: 'pending' | 'approved' | 'rejected';
-    members: Types.ObjectId[]; // List of recruiters in the company
-    createdAt: Date;
-    updatedAt: Date;
-}
+import mongoose, { Schema } from 'mongoose';
+import { ICompany } from '../types/company.types';
 
 const companySchema = new Schema<ICompany>(
     {
@@ -83,6 +60,19 @@ const companySchema = new Schema<ICompany>(
                 ref: 'User',
             },
         ],
+        billingAdmin: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+        },
+        isArchived: {
+            type: Boolean,
+            default: false,
+        },
+        archivedAt: Date,
+        archivedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+        },
     },
     {
         timestamps: true,

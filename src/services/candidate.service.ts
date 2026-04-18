@@ -1,14 +1,14 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User, IUser } from '../models/user.model';
-import { RegisterInput, LoginInput } from '../types/user.types';
+import { RegisterInput, LoginInput } from '../types/auth.types';
 import { ENV } from '../config/env';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
-import { createProfileIfNotExists } from './userProfile.service';
+import { createCandidateProfile } from '../utils/profileHelper';
 import mongoose from 'mongoose';
 
-export const registerUserService = async (
+export const registerCandidateService = async (
     data: RegisterInput,
 ): Promise<{ user: IUser; token: string }> => {
     const session = await mongoose.startSession();
@@ -41,7 +41,7 @@ export const registerUserService = async (
 
         const user = userDocs[0];
 
-        await createProfileIfNotExists(user._id.toString(), session);
+        await createCandidateProfile(user._id.toString(), session);
 
         await session.commitTransaction();
         session.endSession();
@@ -61,7 +61,7 @@ export const registerUserService = async (
     }
 };
 
-export const loginUserService = async (
+export const loginCandidateService = async (
     data: LoginInput,
 ): Promise<{ user: IUser; token: string }> => {
     const { email, password } = data;

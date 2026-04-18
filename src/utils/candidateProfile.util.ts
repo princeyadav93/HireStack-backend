@@ -1,4 +1,4 @@
-import { ICandidateProfile } from '../models/userProfile.model';
+import { ICandidateProfile } from '../models/candidateProfile.model';
 
 export const calculateProfileCompletion = (
     profile: ICandidateProfile,

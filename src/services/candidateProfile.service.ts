@@ -1,11 +1,11 @@
 import cloudinary from '../config/cloudinary';
-import { CandidateProfile } from '../models/userProfile.model';
-import { buildUpdateQuery } from '../utils/userProfile.util';
+import { CandidateProfile } from '../models/candidateProfile.model';
+import { buildUpdateQuery } from '../utils/candidateProfile.util';
 import { Types } from 'mongoose';
-import { ICandidateProfile } from '../models/userProfile.model';
-import { calculateProfileCompletion } from '../utils/userProfile.util';
+import { ICandidateProfile } from '../models/candidateProfile.model';
+import { calculateProfileCompletion } from '../utils/candidateProfile.util';
 import { ClientSession } from 'mongoose';
-import { ResumeDTO } from '../dtos/userProfile.dto';
+import { ResumeDTO } from '../dtos/candidateProfile.dto';
 
 export const uploadResume = async (
     userId: string,

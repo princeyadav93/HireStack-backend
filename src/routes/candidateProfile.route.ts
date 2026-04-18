@@ -1,6 +1,6 @@
 import express from 'express';
 import { upload } from '../middleware/upload';
-import { uploadResumeController } from '../controllers/userProfile.controller';
+import { uploadResumeController } from '../controllers/candidateProfile.controller';
 import { verifyJWT } from '../middleware/auth.middleware';
 
 const router = express.Router();
@@ -18,7 +18,7 @@ import {
     updateExperience,
     updateEducation,
     updatePreferences,
-} from '../controllers/userProfile.controller';
+} from '../controllers/candidateProfile.controller';
 
 // All routes protected
 

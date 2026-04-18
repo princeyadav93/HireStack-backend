@@ -34,14 +34,16 @@ app.get('/', (_, res) => {
 });
 
 // route declarations
-import userRouter from './routes/user.route';
-import userProfileRouter from './routes/userProfile.route';
+import candidateRouter from './routes/candidate.route';
+import candidateProfileRouter from './routes/candidateProfile.route';
 import recruiterRouter from './routes/recruiter.route';
+import recruiterProfileRouter from './routes/recruiterProfile.route';
 import companyRouter from './routes/company.route';
 
-app.use('/user', userRouter);
-app.use('/user/profile', userProfileRouter);
+app.use('/candidate', candidateRouter);
+app.use('/candidate/profile', candidateProfileRouter);
 app.use('/recruiter', recruiterRouter);
+app.use('/recruiter/profile', recruiterProfileRouter);
 app.use('/company', companyRouter);
 
 // 404 handler

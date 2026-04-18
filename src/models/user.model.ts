@@ -1,18 +1,6 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-
-// ─── Interface ───────────────────────────────────────────────
-export interface IUser extends Document {
-    name: string;
-    email: string;
-    password: string;
-    role: string;
-
-    // Custom methods
-    isPasswordCorrect(password: string): Promise<boolean>;
-    accessTokenGenerate(): string;
-    refreshTokenGenerate(): string;
-}
+import { IUser } from '../types/user.types';
 
 // ─── Schema ──────────────────────────────────────────────────
 const userSchema = new Schema<IUser>(
@@ -57,4 +45,5 @@ userSchema.methods.isPasswordCorrect = async function (
 };
 
 // ─── Export ──────────────────────────────────────────────────
+export type { IUser } from '../types/user.types';
 export const User = mongoose.model<IUser>('User', userSchema);

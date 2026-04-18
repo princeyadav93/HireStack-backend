@@ -1,17 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import {
-    registerUserService,
-    loginUserService,
-} from '../services/user.service';
+    registerCandidateService,
+    loginCandidateService,
+} from '../services/candidate.service';
 import { COOKIE_OPTIONS, HTTP_STATUS } from '../constants';
 import { RegisterDTO, LoginDTO } from '../dtos/user.dto';
 import { asyncHandler } from '../utils/asyncHandler';
 
-export const registerUser = asyncHandler(
+export const registerCandidate = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
         const parsed = RegisterDTO.parse(req.body);
 
-        const result = await registerUserService(parsed);
+        const result = await registerCandidateService(parsed);
 
         res.cookie('token', result.token, COOKIE_OPTIONS);
 
@@ -22,11 +22,11 @@ export const registerUser = asyncHandler(
     },
 );
 
-export const loginUser = asyncHandler(
+export const loginCandidate = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
         const parsed = LoginDTO.parse(req.body);
 
-        const { user, token } = await loginUserService(parsed);
+        const { user, token } = await loginCandidateService(parsed);
 
         res.cookie('token', token, COOKIE_OPTIONS);
 
@@ -37,7 +37,7 @@ export const loginUser = asyncHandler(
     },
 );
 
-export const logoutUser = asyncHandler(
+export const logoutCandidate = asyncHandler(
     async (_req: Request, res: Response, _next: NextFunction) => {
         res.clearCookie('token', COOKIE_OPTIONS);
 
@@ -47,3 +47,8 @@ export const logoutUser = asyncHandler(
         });
     },
 );
+
+// Backward compatibility exports
+export const registerUser = registerCandidate;
+export const loginUser = loginCandidate;
+export const logoutUser = logoutCandidate;
