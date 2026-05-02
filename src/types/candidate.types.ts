@@ -15,6 +15,15 @@ export interface Resume {
 }
 
 /**
+ * Profile Image Type
+ */
+export interface ProfileImage {
+    fileName?: string;
+    url?: string;
+    uploadedAt?: Date;
+}
+
+/**
  * Project Type
  */
 export interface Project {
@@ -63,6 +72,7 @@ export interface ICandidateProfile extends Document {
     skills: string[];
     projects: Project[];
     resume: Resume;
+    profileImage: ProfileImage;
     github?: string;
     linkedin?: string;
     preferences: CandidatePreferences;

@@ -1,9 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import {
-    CompanyRole,
-    MembershipStatus,
-    MembershipSource,
-} from '../constants/enums';
+import { CompanyRole } from '../constants/enums';
 import { ICompanyMember } from '../types/companyMember.types';
 
 const companyMemberSchema = new Schema<ICompanyMember>(
@@ -24,37 +20,9 @@ const companyMemberSchema = new Schema<ICompanyMember>(
             required: true,
         },
         status: {
-            type: String,
-            enum: Object.values(MembershipStatus),
-            default: MembershipStatus.PENDING,
+            type: Boolean,
+            default: true,
         },
-        source: {
-            type: String,
-            enum: Object.values(MembershipSource),
-            required: true,
-        },
-        invitedBy: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-        },
-        approvedBy: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-        },
-        removedBy: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-        },
-        rejectedBy: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-        },
-        invitedAt: Date,
-        approvedAt: Date,
-        rejectedAt: Date,
-        removedAt: Date,
-        rejectionReason: String,
-        removalReason: String,
     },
     {
         timestamps: true,

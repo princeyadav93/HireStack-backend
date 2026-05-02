@@ -1,16 +1,18 @@
+// src/services/candidate.service.ts
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { User, IUser } from '../models/user.model';
-import { RegisterInput, LoginInput } from '../types/auth.types';
+import { User } from '../models/user.model';
+import { RegisterInput } from '../types/auth.types';
 import { ENV } from '../config/env';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { createCandidateProfile } from '../utils/profileHelper';
 import mongoose from 'mongoose';
+import { IUserSafe } from '../types/user.types';
 
 export const registerCandidateService = async (
     data: RegisterInput,
-): Promise<{ user: IUser; token: string }> => {
+): Promise<{ user: IUserSafe; token: string }> => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -50,43 +52,12 @@ export const registerCandidateService = async (
             expiresIn: '1d',
         });
 
-        const userObj = user.toObject();
-        userObj.password = ''; // Hide password in response
+        const { password: _, ...userSafe } = userDocs[0].toObject();
 
-        return { user: userObj, token };
+        return { user: userSafe as IUserSafe, token };
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
         throw error;
     }
-};
-
-export const loginCandidateService = async (
-    data: LoginInput,
-): Promise<{ user: IUser; token: string }> => {
-    const { email, password } = data;
-
-    if ([email, password].some((fields) => fields?.trim() === '')) {
-        throw new Error('All fields are required');
-    }
-
-    const user = await User.findOne({ email }).select('+password');
-
-    if (!user) {
-        throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid email');
-    }
-
-    const isMatch = await user.isPasswordCorrect(password);
-
-    if (!isMatch) {
-        throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid password');
-    }
-
-    const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {
-        expiresIn: '1d',
-    });
-
-    user.password = ''; // Hide password in response
-
-    return { user, token };
 };

@@ -1,15 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
-import { registerCandidateService } from '../services/candidate.service';
+import { registerAdminService } from '../services/admin.service';
 import { COOKIE_OPTIONS, HTTP_STATUS } from '../constants';
 import { RegisterDTO } from '../dtos/user.dto';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiResponse } from '../utils/ApiResponse';
 
-export const registerCandidate = asyncHandler(
+/**
+ * Admin registration controller
+ */
+export const registerAdmin = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {
         const parsed = RegisterDTO.parse(req.body);
 
-        const result = await registerCandidateService(parsed);
+        const result = await registerAdminService(parsed);
 
         res.cookie('token', result.token, COOKIE_OPTIONS);
 
@@ -17,16 +20,8 @@ export const registerCandidate = asyncHandler(
             new ApiResponse(
                 HTTP_STATUS.CREATED,
                 result,
-                'Candidate registered successfully',
+                'Admin registered successfully',
             ),
-        );
-    },
-);
-
-export const getCandidateController = asyncHandler(
-    async (req: Request, res: Response, _next: NextFunction) => {
-        res.status(HTTP_STATUS.OK).json(
-            new ApiResponse(HTTP_STATUS.OK, req.user, 'Candidate retrieved'),
         );
     },
 );

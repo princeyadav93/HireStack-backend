@@ -2,7 +2,7 @@ import cloudinary from '../config/cloudinary';
 import { RecruiterProfile } from '../models/recruiterProfile.model';
 import { Types } from 'mongoose';
 import { IRecruiterProfile } from '../types/recruiter.types';
-import { ClientSession } from 'mongoose';
+import { ApiError } from '../utils/ApiError';
 
 /**
  * Upload recruiter profile image to Cloudinary
@@ -11,7 +11,7 @@ export const uploadProfileImage = async (
     userId: string,
     file: Express.Multer.File,
 ) => {
-    if (!file) throw new Error('No file uploaded');
+    if (!file) throw new ApiError(400, 'No file uploaded');
 
     // Upload to cloudinary
     const result = await new Promise<any>((resolve, reject) => {
@@ -43,7 +43,7 @@ export const uploadProfileImage = async (
     ).lean();
 
     if (!profile) {
-        throw new Error('Profile not found. Create profile first.');
+        throw new ApiError(404, 'Profile not found. Create profile first.');
     }
 
     return profile;
@@ -65,7 +65,7 @@ export const updateRecruiterProfileSection = async (
     );
 
     if (!updatedProfile) {
-        throw new Error('Recruiter profile not found');
+        throw new ApiError(404, 'Recruiter profile not found');
     }
 
     return updatedProfile;
@@ -80,7 +80,7 @@ export const getRecruiterProfile = async (userId: string) => {
     });
 
     if (!profile) {
-        throw new Error('Recruiter profile not found');
+        throw new ApiError(404, 'Recruiter profile not found');
     }
 
     return profile;

@@ -1,15 +1,28 @@
 import express from 'express';
 import { upload } from '../middleware/upload';
-import { uploadResumeController } from '../controllers/candidateProfile.controller';
+import {
+    uploadResumeController,
+    uploadProfileImageController,
+    getCandidateProfileController,
+} from '../controllers/candidateProfile.controller';
 import { verifyJWT } from '../middleware/auth.middleware';
 
 const router = express.Router();
+
+router.get('/', verifyJWT, getCandidateProfileController);
 
 router.patch(
     '/resume',
     verifyJWT,
     upload.single('resume'),
     uploadResumeController,
+);
+
+router.patch(
+    '/profile-image',
+    verifyJWT,
+    upload.single('profileImage'),
+    uploadProfileImageController,
 );
 
 import {

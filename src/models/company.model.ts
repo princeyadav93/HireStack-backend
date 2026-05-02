@@ -51,8 +51,31 @@ const companySchema = new Schema<ICompany>(
         },
         status: {
             type: String,
-            enum: ['pending', 'approved', 'rejected'],
+            enum: ['pending', 'approved', 'rejected', 'suspended'],
             default: 'pending',
+        },
+        suspensionDetails: {
+            isSuspended: {
+                type: Boolean,
+                default: false,
+            },
+            reason: {
+                type: String,
+                enum: ['fraudulent_activity', 'policy_violation', 'inactive'],
+                default: null,
+            },
+            suspendedAt: Date,
+            suspendedBy: {
+                type: Schema.Types.ObjectId,
+                ref: 'User',
+            },
+            internalDescription: String,
+            publicDescription: String,
+            appealable: {
+                type: Boolean,
+                default: true,
+            },
+            appealDeadline: Date,
         },
         members: [
             {
@@ -60,10 +83,6 @@ const companySchema = new Schema<ICompany>(
                 ref: 'User',
             },
         ],
-        billingAdmin: {
-            type: Schema.Types.ObjectId,
-            ref: 'User',
-        },
         isArchived: {
             type: Boolean,
             default: false,

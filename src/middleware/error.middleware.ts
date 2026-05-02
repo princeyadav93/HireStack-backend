@@ -8,8 +8,7 @@ export const errorHandler = (
     _next: NextFunction,
 ) => {
     // Default to 500 if statusCode is missing
-    const statusCode =
-        err instanceof ApiError ? err.statusCode : err.statusCode || 500;
+    const statusCode = err.statusCode || 500;
     const message = err.message || 'Internal Server Error';
 
     // Log errors in development

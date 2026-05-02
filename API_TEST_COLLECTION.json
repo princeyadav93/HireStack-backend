@@ -30,6 +30,18 @@
                 "email": "recruiter3@hirestack.com",
                 "role": "RECRUITER",
                 "token": "jwt_token_recruiter_3"
+            },
+            "candidate1": {
+                "id": "user_004_candidate",
+                "email": "candidate1@hirestack.com",
+                "role": "CANDIDATE",
+                "token": "jwt_token_candidate_1"
+            },
+            "admin": {
+                "id": "user_admin",
+                "email": "admin@hirestack.com",
+                "role": "ADMIN",
+                "token": "jwt_token_admin"
             }
         },
         "companies": {
@@ -37,6 +49,11 @@
                 "id": "company_001",
                 "name": "TechCorp",
                 "ownerId": "user_001_recruiter"
+            },
+            "company2": {
+                "id": "company_002",
+                "name": "StartupXYZ",
+                "ownerId": "user_002_recruiter"
             }
         }
     },
@@ -502,6 +519,375 @@
                 "OWNER always accountable but can delegate to reduce bottleneck",
                 "Used for billing, payment, and subscription management"
             ]
+        },
+        {
+            "name": "10. Login",
+            "method": "POST",
+            "path": "/auth/login",
+            "description": "Authenticate user with email and password. Returns user data and JWT token.",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "email": "recruiter1@hirestack.com",
+                "password": "SecurePassword123"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Logged in successfully",
+                    "data": {
+                        "user": {
+                            "_id": "user_001_recruiter",
+                            "email": "recruiter1@hirestack.com",
+                            "role": "RECRUITER",
+                            "firstName": "John",
+                            "lastName": "Doe"
+                        },
+                        "token": "jwt_token_recruiter_1"
+                    }
+                }
+            }
+        },
+        {
+            "name": "11. Logout",
+            "method": "POST",
+            "path": "/auth/logout",
+            "description": "Logout user. Clears session/token.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": null,
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Logged out successfully",
+                    "data": null
+                }
+            }
+        },
+        {
+            "name": "12. Register Candidate",
+            "method": "POST",
+            "path": "/auth/register-candidate",
+            "description": "Register new candidate account. Creates user and candidate profile.",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "email": "candidate1@hirestack.com",
+                "password": "SecurePass123",
+                "firstName": "Alice",
+                "lastName": "Johnson"
+            },
+            "expectedResponse": {
+                "statusCode": 201,
+                "body": {
+                    "success": true,
+                    "message": "Candidate registered successfully",
+                    "data": {
+                        "user": {
+                            "_id": "user_004_candidate",
+                            "email": "candidate1@hirestack.com",
+                            "role": "CANDIDATE",
+                            "firstName": "Alice",
+                            "lastName": "Johnson"
+                        },
+                        "token": "jwt_token_candidate_1"
+                    }
+                }
+            }
+        },
+        {
+            "name": "13. Register Recruiter",
+            "method": "POST",
+            "path": "/auth/register-recruiter",
+            "description": "Register new recruiter account.",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "email": "recruiter4@hirestack.com",
+                "password": "SecurePass123",
+                "firstName": "Bob",
+                "lastName": "Wilson"
+            },
+            "expectedResponse": {
+                "statusCode": 201,
+                "body": {
+                    "success": true,
+                    "message": "Recruiter registered successfully",
+                    "data": {
+                        "user": {
+                            "_id": "user_005_recruiter",
+                            "email": "recruiter4@hirestack.com",
+                            "role": "RECRUITER"
+                        },
+                        "token": "jwt_token_recruiter_4"
+                    }
+                }
+            }
+        },
+        {
+            "name": "14. Get Pending Companies (Admin)",
+            "method": "GET",
+            "path": "/admin/companies/pending",
+            "description": "Admin retrieves all pending companies awaiting approval.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{admin_token}}"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Pending companies retrieved",
+                    "data": [
+                        {
+                            "_id": "company_002",
+                            "name": "StartupXYZ",
+                            "industry": "AI/ML",
+                            "owner": "user_002_recruiter",
+                            "status": "PENDING",
+                            "createdAt": "2026-04-20T10:00:00Z"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "15. Approve Company (Admin)",
+            "method": "POST",
+            "path": "/admin/companies/{{company2_id}}/approve",
+            "description": "Admin approves a pending company registration.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{admin_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": null,
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Company approved successfully",
+                    "data": {
+                        "_id": "company_002",
+                        "name": "StartupXYZ",
+                        "status": "APPROVED",
+                        "approvedAt": "2026-04-21T10:00:00Z"
+                    }
+                }
+            }
+        },
+        {
+            "name": "16. Reject Company (Admin)",
+            "method": "POST",
+            "path": "/admin/companies/{{company2_id}}/reject",
+            "description": "Admin rejects a pending company registration.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{admin_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "reason": "Incomplete documentation"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Company rejected successfully",
+                    "data": {
+                        "_id": "company_002",
+                        "name": "StartupXYZ",
+                        "status": "REJECTED",
+                        "rejectionReason": "Incomplete documentation"
+                    }
+                }
+            }
+        },
+        {
+            "name": "17. Upload Resume (Candidate)",
+            "method": "POST",
+            "path": "/candidate-profile/resume",
+            "description": "Upload resume file. Supports PDF, DOCX formats.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{candidate1_token}}"
+            },
+            "requestBody": {
+                "file": "resume.pdf"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Resume uploaded successfully",
+                    "data": {
+                        "resumeUrl": "https://cloudinary.com/resume_123.pdf",
+                        "uploadedAt": "2026-04-21T10:00:00Z"
+                    }
+                }
+            }
+        },
+        {
+            "name": "18. Update Candidate Basic Profile",
+            "method": "POST",
+            "path": "/candidate-profile/basic",
+            "description": "Update candidate basic info (title, summary, etc.)",
+            "auth": {
+                "type": "bearer",
+                "token": "{{candidate1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "title": "Full Stack Developer",
+                "summary": "Experienced MERN stack developer",
+                "location": "San Francisco, CA"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Profile updated successfully",
+                    "data": {
+                        "title": "Full Stack Developer",
+                        "summary": "Experienced MERN stack developer",
+                        "location": "San Francisco, CA"
+                    }
+                }
+            }
+        },
+        {
+            "name": "19. Upload Recruiter Profile Image",
+            "method": "POST",
+            "path": "/recruiter-profile/image",
+            "description": "Upload recruiter profile picture.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "requestBody": {
+                "file": "profile.jpg"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Profile image uploaded successfully",
+                    "data": {
+                        "profileImageUrl": "https://cloudinary.com/profile_123.jpg"
+                    }
+                }
+            }
+        },
+        {
+            "name": "20. Update Recruiter Personal Info",
+            "method": "POST",
+            "path": "/recruiter-profile/personal-info",
+            "description": "Update recruiter title, department, bio, phone.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "title": "Head of Recruitment",
+                "department": "HR",
+                "bio": "Experienced recruiter with 5+ years",
+                "phone": "1234567890"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Personal info updated successfully",
+                    "data": {
+                        "title": "Head of Recruitment",
+                        "department": "HR",
+                        "bio": "Experienced recruiter with 5+ years",
+                        "phone": "1234567890"
+                    }
+                }
+            }
+        },
+        {
+            "name": "21. Update Recruiter Social Links",
+            "method": "POST",
+            "path": "/recruiter-profile/social-links",
+            "description": "Update LinkedIn, Twitter, personal website.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "socialLinks": {
+                    "linkedin": "https://linkedin.com/in/johndoe",
+                    "twitter": "https://twitter.com/johndoe",
+                    "website": "https://johndoe.com"
+                }
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Social links updated successfully",
+                    "data": {
+                        "socialLinks": {
+                            "linkedin": "https://linkedin.com/in/johndoe",
+                            "twitter": "https://twitter.com/johndoe",
+                            "website": "https://johndoe.com"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "22. Get Recruiter Profile",
+            "method": "GET",
+            "path": "/recruiter-profile",
+            "description": "Retrieve recruiter's own profile details.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Profile retrieved successfully",
+                    "data": {
+                        "_id": "profile_001",
+                        "userId": "user_001_recruiter",
+                        "title": "Head of Recruitment",
+                        "department": "HR",
+                        "bio": "Experienced recruiter with 5+ years",
+                        "profileImageUrl": "https://cloudinary.com/profile_123.jpg",
+                        "socialLinks": {
+                            "linkedin": "https://linkedin.com/in/johndoe",
+                            "twitter": "https://twitter.com/johndoe"
+                        }
+                    }
+                }
+            }
         }
     ],
     "errorScenarios": [

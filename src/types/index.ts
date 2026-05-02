@@ -6,12 +6,7 @@
  */
 
 // User Types
-export type {
-    IUser,
-    IUserDocument,
-    IUserPublic,
-    IUserWithProfile,
-} from './user.types';
+export type { IUser, IUserSafe, IUserWithProfile } from './user.types';
 export { UserRole } from './user.types';
 
 // Authentication Types
@@ -54,16 +49,12 @@ export type {
 // Company Member Types
 export type {
     CompanyMemberRole,
-    MembershipStatus,
-    MembershipSource,
     ICompanyMember,
     ICompanyMemberDocument,
     ICompanyMemberResponse,
     ICompanyMemberSimple,
     MembershipCreateInput,
-    MembershipUpdateInput,
     MembershipFilterInput,
-    MembershipAuditEntry,
 } from './companyMember.types';
 
 // Candidate Types

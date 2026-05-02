@@ -173,7 +173,95 @@ Platform Layer (Global)
 
 ---
 
-## 🚀 What's Next
+## � Module Status
+
+### Routes & Handlers (Implemented)
+
+| Module                | Route File                  | Controller                       | Service                       | Status      |
+| --------------------- | --------------------------- | -------------------------------- | ----------------------------- | ----------- |
+| **Authentication**    | `auth.route.ts`             | `auth.controller.ts`             | `auth.service.ts`             | ✅ Complete |
+| **Platform Admin**    | `platformAdmin.route.ts`    | `platformAdmin.controller.ts`    | `platformAdmin.service.ts`    | ✅ Complete |
+| **Company Owner**     | `companyOwner.route.ts`     | `companyOwner.controller.ts`     | `companyOwner.service.ts`     | ✅ Complete |
+| **Company Member**    | `companyMember.route.ts`    | `companyMembers.controller.ts`   | `companyMember.service.ts`    | ✅ Complete |
+| **Recruiter**         | `recruiter.route.ts`        | `recruiter.controller.ts`        | `recruiter.service.ts`        | ✅ Complete |
+| **Recruiter Profile** | `recruiterProfile.route.ts` | `recruiterProfile.controller.ts` | `recruiterProfile.service.ts` | ✅ Complete |
+| **Candidate**         | `candidate.route.ts`        | `candidate.controller.ts`        | `candidate.service.ts`        | ✅ Complete |
+| **Candidate Profile** | `candidateProfile.route.ts` | `candidateProfile.controller.ts` | `candidateProfile.service.ts` | ✅ Complete |
+| **Admin**             | `admin.route.ts`            | `admin.controller.ts`            | `admin.service.ts`            | ✅ Complete |
+
+---
+
+## 🏛️ Architecture Decisions
+
+| Decision                  | Before                                        | Now                                            | Rationale                                           |
+| ------------------------- | --------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| **Member Creation**       | Invite/join flow                              | Top-down only                                  | Simplifies auth, prevents unauthorized access       |
+| **Recruiter Bootstrap**   | Multiple paths                                | Global self-register → creates company → OWNER | Single, clear onboarding path                       |
+| **Member Addition**       | Any role could invite                         | OWNER or ADMIN only                            | Enforces hierarchy, improves security               |
+| **Membership Model**      | `MembershipStatus` (enum), `MembershipSource` | Boolean `active` status                        | Cleaner data model, faster queries                  |
+| **Blocked Members**       | Separate status                               | `active: false`                                | Reduces DB schema complexity                        |
+| **Billing Admin**         | Separate role                                 | Removed (OWNER handles billing)                | Simplifies role model, OWNER inherits all           |
+| **Ownership Transfer**    | Allowed                                       | Not allowed                                    | Prevents unauthorized transfers, audit clarity      |
+| **Company ID Resolution** | From URL params                               | From CompanyMember record                      | Prevents parameter tampering, source of truth in DB |
+
+---
+
+## 🔗 Cross-Module Dependencies
+
+### Authentication Module
+
+- **Entry point**: `/auth/register` (global recruiter only), `/auth/login`
+- **Outputs**: JWT token, company context
+- **Depends on**: User model, JWT config
+
+### Platform Admin Module (`platformAdmin.*`)
+
+- **Routes**: Approve/reject companies, remove fraudulent records
+- **Depends on**: Company model, global admin role verification
+- **Used by**: Platform admins only
+
+### Company Owner Module (`companyOwner.*`)
+
+- **Routes**: Create company (during recruiter self-register), manage company settings, manage billing
+- **Depends on**: Company model, CompanyMember model, User authentication
+- **Used by**: Company owners
+
+### Company Member Module (`companyMember.*`)
+
+- **Routes**: Create ADMIN/RECRUITER members (OWNER/ADMIN only), list members, update roles
+- **Depends on**: CompanyMember model (resolves companyId from record, not URL)
+- **Used by**: OWNER, ADMIN roles
+
+### Recruiter Module (`recruiter.*`)
+
+- **Routes**: Create/update/delete job postings
+- **Depends on**: Company context from CompanyMember, Job model
+- **Used by**: RECRUITER, ADMIN, OWNER roles
+
+### Candidate Module (`candidate.*`)
+
+- **Routes**: Apply to jobs, list applications
+- **Depends on**: User model, Application model
+- **Used by**: CANDIDATE role
+
+### Profile Modules (`recruiterProfile.*`, `candidateProfile.*`)
+
+- **Routes**: Update personal profiles, upload resumes/photos
+- **Depends on**: User model, Cloudinary integration
+- **Used by**: Respective user types
+
+---
+
+## ✋ Not Yet Started
+
+- **Job Analytics**: View counts, application metrics per recruiter/company
+- **Candidate Search**: Full-text search on skills, experience, location
+- **Bulk Operations**: Import candidates, batch job posting
+- **API Integrations**: ATS connectors, third-party service APIs
+
+---
+
+## �🚀 What's Next
 
 ### Phase 1: Company Verification & Role Expansion (Smart Email Domain Validation)
 

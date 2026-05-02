@@ -1,3 +1,5 @@
+// src/models/candidateProfile.model.ts
+
 import mongoose, { Schema } from 'mongoose';
 import { ICandidateProfile } from '../types/candidate.types';
 
@@ -35,6 +37,12 @@ const candidateProfileSchema = new Schema<ICandidateProfile>(
         resume: {
             url: { type: String },
             uploadedAt: { type: Date },
+        },
+
+        profileImage: {
+            url: String,
+            fileName: String,
+            uploadedAt: Date,
         },
 
         github: {

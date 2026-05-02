@@ -1,9 +1,16 @@
 import { Request, Response } from 'express';
-import { uploadResume } from '../services/candidateProfile.service';
+import {
+    uploadResume,
+    uploadProfileImage,
+    getCandidateProfile,
+} from '../services/candidateProfile.service';
 import { updateProfileSection } from '../services/candidateProfile.service';
 import { ZodType } from 'zod';
 import { ICandidateProfile } from '../models/candidateProfile.model';
 import { asyncHandler } from '../utils/asyncHandler';
+import { ApiResponse } from '../utils/ApiResponse';
+import { HTTP_STATUS } from '../constants';
+import { ApiError } from '../utils/ApiError';
 import {
     BasicProfileDTO,
     ProjectsDTO,
@@ -12,33 +19,71 @@ import {
     PreferencesDTO,
 } from '../dtos/candidateProfile.dto';
 
-export const uploadResumeController = asyncHandler(
+export const getCandidateProfileController = asyncHandler(
     async (req: Request, res: Response) => {
-        const userId = req.user?.id;
+        const userId = req.user?._id?.toString();
 
         if (!userId) {
-            res.status(401).json({
-                success: false,
-                message: 'Unauthorized',
-            });
-            return;
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+        }
+
+        const profile = await getCandidateProfile(userId);
+
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                profile,
+                'Profile retrieved successfully',
+            ),
+        );
+    },
+);
+
+export const uploadResumeController = asyncHandler(
+    async (req: Request, res: Response) => {
+        const userId = req.user?._id?.toString();
+
+        if (!userId) {
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
         }
 
         if (!req.file) {
-            res.status(400).json({
-                success: false,
-                message: 'No file uploaded',
-            });
-            return;
+            throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'No file uploaded');
         }
 
         const profile = await uploadResume(userId, req.file);
 
-        res.status(200).json({
-            success: true,
-            message: 'Resume uploaded successfully',
-            data: profile,
-        });
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                profile,
+                'Resume uploaded successfully',
+            ),
+        );
+    },
+);
+
+export const uploadProfileImageController = asyncHandler(
+    async (req: Request, res: Response) => {
+        const userId = req.user?._id?.toString();
+
+        if (!userId) {
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+        }
+
+        if (!req.file) {
+            throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'No file uploaded');
+        }
+
+        const profile = await uploadProfileImage(userId, req.file);
+
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                profile,
+                'Profile image uploaded successfully',
+            ),
+        );
     },
 );
 
@@ -46,24 +91,23 @@ export const createProfileUpdater = <T extends Partial<ICandidateProfile>>(
     schema: ZodType<T>,
 ) => {
     return asyncHandler(async (req: Request, res: Response) => {
-        const userId = req.user?.id;
+        const userId = req.user?._id?.toString();
 
         if (!userId) {
-            res.status(401).json({
-                success: false,
-                message: 'Unauthorized',
-            });
-            return;
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
         }
 
         const parsedData: T = schema.parse(req.body);
 
         const updatedProfile = await updateProfileSection(userId, parsedData);
 
-        res.status(200).json({
-            success: true,
-            data: updatedProfile,
-        });
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                updatedProfile,
+                'Profile updated successfully',
+            ),
+        );
     });
 };
 

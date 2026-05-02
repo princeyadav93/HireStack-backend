@@ -1,8 +1,9 @@
 import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { IUser } from '../types/user.types';
+import { ENV } from '../config/env';
 
-// ─── Schema ──────────────────────────────────────────────────
 const userSchema = new Schema<IUser>(
     {
         name: {
@@ -31,19 +32,33 @@ const userSchema = new Schema<IUser>(
             enum: ['candidate', 'recruiter', 'admin'],
             default: 'candidate',
         },
+        refreshToken: {
+            type: String,
+            select: false, // never returned by default
+        },
     },
-    {
-        timestamps: true,
-    },
+    { timestamps: true },
 );
 
-// ─── Methods ─────────────────────────────────────────────────
 userSchema.methods.isPasswordCorrect = async function (
     password: string,
 ): Promise<boolean> {
     return await bcrypt.compare(password, this.password);
 };
 
-// ─── Export ──────────────────────────────────────────────────
+userSchema.methods.accessTokenGenerate = function (): string {
+    return jwt.sign(
+        { userId: this._id, email: this.email, role: this.role },
+        ENV.JWT_SECRET,
+        { expiresIn: '1d' },
+    );
+};
+
+userSchema.methods.refreshTokenGenerate = function (): string {
+    return jwt.sign({ userId: this._id }, ENV.REFRESH_TOKEN_SECRET, {
+        expiresIn: ENV.REFRESH_TOKEN_EXPIRY as unknown as number,
+    });
+};
+
 export type { IUser } from '../types/user.types';
 export const User = mongoose.model<IUser>('User', userSchema);

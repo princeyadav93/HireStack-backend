@@ -1,20 +1,16 @@
 import express from 'express';
 import {
+    getCandidateController,
     registerCandidate,
-    loginCandidate,
-    logoutCandidate,
-    // Backward compatibility
-    registerUser,
-    loginUser,
-    logoutUser,
 } from '../controllers/candidate.controller';
 import { verifyJWT } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
-// Candidate endpoints
+// Candidate registration only
+// Login/Logout handled by global auth routes
+router.get('/', verifyJWT, getCandidateController);
+
 router.post('/register', registerCandidate);
-router.post('/login', loginCandidate);
-router.post('/logout', verifyJWT, logoutCandidate);
 
 export default router;

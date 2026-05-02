@@ -25,47 +25,51 @@ export const CreateCompanyDTO = z.object({
 
 export type CreateCompanyType = z.infer<typeof CreateCompanyDTO>;
 
-export const JoinCompanyDTO = z.object({
-    invitationCode: z.string().optional(),
+export const CreateAdminDTO = z.object({
+    name: z
+        .string()
+        .trim()
+        .min(2, 'Name must be at least 2 characters')
+        .max(50, 'Name must not exceed 50 characters'),
+    email: z.email('Invalid email address').toLowerCase(),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-export type JoinCompanyType = z.infer<typeof JoinCompanyDTO>;
+export type CreateAdminType = z.infer<typeof CreateAdminDTO>;
 
-export const InviteRecruiterDTO = z.object({
-    recruiterId: z.string().min(1, 'Recruiter ID is required'),
+export const CreateRecruiterDTO = z.object({
+    name: z
+        .string()
+        .trim()
+        .min(2, 'Name must be at least 2 characters')
+        .max(50, 'Name must not exceed 50 characters'),
+    email: z.email('Invalid email address').toLowerCase(),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-export type InviteRecruiterType = z.infer<typeof InviteRecruiterDTO>;
+export type CreateRecruiterType = z.infer<typeof CreateRecruiterDTO>;
 
-export const ApproveMemberDTO = z.object({
+export const DeleteMemberDTO = z.object({
     memberId: z.string().min(1, 'Member ID is required'),
 });
 
-export type ApproveMemberType = z.infer<typeof ApproveMemberDTO>;
+export type DeleteMemberType = z.infer<typeof DeleteMemberDTO>;
 
-export const RejectMemberDTO = z.object({
-    memberId: z.string().min(1, 'Member ID is required'),
-    reason: z.string().min(1, 'Reason is required').max(200),
+export const UpdateCompanyDTO = z.object({
+    name: z.string().min(2).max(100).trim().optional(),
+    industry: z.string().trim().optional(),
+    size: z
+        .enum(['STARTUP', 'SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE'])
+        .optional(),
+    description: z.string().max(500).trim().optional(),
+    website: z.string().url().optional(),
+    location: z
+        .object({
+            city: z.string().trim(),
+            state: z.string().trim().optional(),
+            country: z.string().trim(),
+        })
+        .optional(),
 });
 
-export type RejectMemberType = z.infer<typeof RejectMemberDTO>;
-
-export const RemoveMemberDTO = z.object({
-    memberId: z.string().min(1, 'Member ID is required'),
-    reason: z.string().min(1, 'Reason is required').max(200),
-});
-
-export type RemoveMemberType = z.infer<typeof RemoveMemberDTO>;
-
-export const ChangeMemberRoleDTO = z.object({
-    memberId: z.string().min(1, 'Member ID is required'),
-    newRole: z.enum(['OWNER', 'ADMIN', 'RECRUITER']),
-});
-
-export type ChangeMemberRoleType = z.infer<typeof ChangeMemberRoleDTO>;
-
-export const DelegateBillingAdminDTO = z.object({
-    adminId: z.string().min(1, 'Admin ID is required'),
-});
-
-export type DelegateBillingAdminType = z.infer<typeof DelegateBillingAdminDTO>;
+export type UpdateCompanyType = z.infer<typeof UpdateCompanyDTO>;

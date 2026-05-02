@@ -5,38 +5,35 @@ import {
     getRecruiterProfile,
 } from '../services/recruiterProfile.service';
 import { asyncHandler } from '../utils/asyncHandler';
-import { z } from 'zod';
+import { ApiResponse } from '../utils/ApiResponse';
+import { HTTP_STATUS } from '../constants';
+import { ApiError } from '../utils/ApiError';
+import { PersonalInfoDTO, SocialLinksDTO } from '../dtos/recruiterProfile.dto';
 
 /**
  * Upload recruiter profile image
  */
 export const uploadProfileImageController = asyncHandler(
     async (req: Request, res: Response) => {
-        const userId = req.user?.id;
+        const userId = req.user?._id.toString();
 
         if (!userId) {
-            res.status(401).json({
-                success: false,
-                message: 'Unauthorized',
-            });
-            return;
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
         }
 
         if (!req.file) {
-            res.status(400).json({
-                success: false,
-                message: 'No file uploaded',
-            });
-            return;
+            throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'No file uploaded');
         }
 
         const profile = await uploadProfileImage(userId, req.file);
 
-        res.status(200).json({
-            success: true,
-            message: 'Profile image uploaded successfully',
-            data: profile,
-        });
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                profile,
+                'Profile image uploaded successfully',
+            ),
+        );
     },
 );
 
@@ -45,25 +42,11 @@ export const uploadProfileImageController = asyncHandler(
  */
 export const updatePersonalInfo = asyncHandler(
     async (req: Request, res: Response) => {
-        const userId = req.user?.id;
+        const userId = req.user?._id.toString();
 
         if (!userId) {
-            res.status(401).json({
-                success: false,
-                message: 'Unauthorized',
-            });
-            return;
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
         }
-
-        const PersonalInfoDTO = z.object({
-            title: z.string().max(100).optional(),
-            department: z.string().max(100).optional(),
-            bio: z.string().max(500).optional(),
-            phone: z
-                .string()
-                .regex(/^[0-9]{10,}$/)
-                .optional(),
-        });
 
         const parsedData = PersonalInfoDTO.parse(req.body);
         const updatedProfile = await updateRecruiterProfileSection(
@@ -71,11 +54,13 @@ export const updatePersonalInfo = asyncHandler(
             parsedData,
         );
 
-        res.status(200).json({
-            success: true,
-            message: 'Personal info updated successfully',
-            data: updatedProfile,
-        });
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                updatedProfile,
+                'Personal info updated successfully',
+            ),
+        );
     },
 );
 
@@ -84,25 +69,11 @@ export const updatePersonalInfo = asyncHandler(
  */
 export const updateSocialLinks = asyncHandler(
     async (req: Request, res: Response) => {
-        const userId = req.user?.id;
+        const userId = req.user?._id.toString();
 
         if (!userId) {
-            res.status(401).json({
-                success: false,
-                message: 'Unauthorized',
-            });
-            return;
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
         }
-
-        const SocialLinksDTO = z.object({
-            socialLinks: z
-                .object({
-                    linkedin: z.string().optional(),
-                    twitter: z.string().optional(),
-                    website: z.string().url().optional(),
-                })
-                .optional(),
-        });
 
         const parsedData = SocialLinksDTO.parse(req.body);
         const updatedProfile = await updateRecruiterProfileSection(
@@ -110,11 +81,13 @@ export const updateSocialLinks = asyncHandler(
             parsedData as any,
         );
 
-        res.status(200).json({
-            success: true,
-            message: 'Social links updated successfully',
-            data: updatedProfile,
-        });
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                updatedProfile,
+                'Social links updated successfully',
+            ),
+        );
     },
 );
 
@@ -122,20 +95,19 @@ export const updateSocialLinks = asyncHandler(
  * Get recruiter profile
  */
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user?.id;
+    const userId = req.user?._id.toString();
 
     if (!userId) {
-        res.status(401).json({
-            success: false,
-            message: 'Unauthorized',
-        });
-        return;
+        throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
     }
 
     const profile = await getRecruiterProfile(userId);
 
-    res.status(200).json({
-        success: true,
-        data: profile,
-    });
+    res.status(HTTP_STATUS.OK).json(
+        new ApiResponse(
+            HTTP_STATUS.OK,
+            profile,
+            'Profile retrieved successfully',
+        ),
+    );
 });

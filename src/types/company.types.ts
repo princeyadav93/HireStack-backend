@@ -13,7 +13,7 @@ export type CompanySize =
 /**
  * Company Status Type
  */
-export type CompanyStatus = 'pending' | 'approved' | 'rejected';
+export type CompanyStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
 
 /**
  * Company Logo Type
@@ -49,12 +49,21 @@ export interface ICompany extends Document {
     createdBy: Types.ObjectId; // OWNER of company
     status: CompanyStatus;
     members: Types.ObjectId[]; // Denormalized cache: only ACTIVE members
-    billingAdmin?: Types.ObjectId; // Delegated billing access (defaults to owner)
     isArchived: boolean; // Soft delete
     archivedAt?: Date;
     archivedBy?: Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
+    suspensionDetails?: {
+        isSuspended: boolean;
+        reason?: string;
+        suspendedAt?: Date;
+        suspendedBy?: Types.ObjectId;
+        internalDescription?: string;
+        publicDescription?: string;
+        appealable?: boolean;
+        appealDeadline?: Date;
+    };
 }
 
 /**
@@ -76,7 +85,6 @@ export interface ICompanyResponse {
     location?: CompanyLocation;
     recruiterCount: number;
     owner: string;
-    billingAdmin?: string;
     members: Array<{
         userId: string;
         role: string;

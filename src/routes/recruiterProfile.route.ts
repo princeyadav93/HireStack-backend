@@ -25,7 +25,7 @@ router.get('/', getProfile);
  * Upload or update recruiter profile image
  */
 router.patch(
-    '/image',
+    '/avatar',
     upload.single('profileImage'),
     uploadProfileImageController,
 );

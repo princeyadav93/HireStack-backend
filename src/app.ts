@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-
+import { HTTP_STATUS } from './constants';
 import { notFoundHandler } from './middleware/notFound.middleware';
 import { errorHandler } from './middleware/error.middleware';
 
@@ -27,24 +27,39 @@ app.use(cookieParser());
 
 // Health check
 app.get('/', (_, res) => {
-    res.status(200).json({
+    res.status(HTTP_STATUS.OK).json({
         status: 'OK',
         message: 'Server is healthy',
     });
 });
 
 // route declarations
+
+// Global auth routes (login/logout for all roles)
+import authRoutes from './routes/auth.route';
+app.use('/auth', authRoutes);
+
+// Candidate routes (registration only)
 import candidateRouter from './routes/candidate.route';
 import candidateProfileRouter from './routes/candidateProfile.route';
-import recruiterRouter from './routes/recruiter.route';
-import recruiterProfileRouter from './routes/recruiterProfile.route';
-import companyRouter from './routes/company.route';
-
 app.use('/candidate', candidateRouter);
 app.use('/candidate/profile', candidateProfileRouter);
+
+// Recruiter routes (registration only)
+import recruiterRouter from './routes/recruiter.route';
+import recruiterProfileRouter from './routes/recruiterProfile.route';
 app.use('/recruiter', recruiterRouter);
 app.use('/recruiter/profile', recruiterProfileRouter);
-app.use('/company', companyRouter);
+
+// Admin routes (registration for testing)
+import adminRouter from './routes/platformAdmin.route';
+app.use('/admin', adminRouter);
+
+// company routes
+import companyOwnerRouter from './routes/companyOwner.route';
+import companyMemberRouter from './routes/companyMember.route';
+app.use('/company', companyOwnerRouter);
+app.use('/company', companyMemberRouter);
 
 // 404 handler
 app.use(notFoundHandler);

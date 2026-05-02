@@ -60,10 +60,6 @@ const recruiterProfileSchema = new Schema<IRecruiterProfile>(
             default: 0,
             min: 0,
         },
-        isPlatformVerified: {
-            type: Boolean,
-            default: false,
-        },
     },
     {
         timestamps: true,

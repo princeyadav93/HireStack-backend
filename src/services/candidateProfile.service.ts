@@ -6,6 +6,17 @@ import { ICandidateProfile } from '../models/candidateProfile.model';
 import { calculateProfileCompletion } from '../utils/candidateProfile.util';
 import { ClientSession } from 'mongoose';
 import { ResumeDTO } from '../dtos/candidateProfile.dto';
+import { ApiError } from '../utils/ApiError';
+
+export const getCandidateProfile = async (userId: string) => {
+    const profile = await CandidateProfile.findOne({ user: userId }).lean();
+
+    if (!profile) {
+        throw new ApiError(404, 'Profile not found');
+    }
+
+    return profile;
+};
 
 export const uploadResume = async (
     userId: string,
@@ -13,9 +24,7 @@ export const uploadResume = async (
 ) => {
     ResumeDTO.parse({ file });
 
-    console.log('resume', file);
-
-    if (!file) throw new Error('No file uploaded');
+    if (!file) throw new ApiError(400, 'No file uploaded');
 
     // ✅ upload to cloudinary
     const result = await new Promise<any>((resolve, reject) => {
@@ -48,7 +57,50 @@ export const uploadResume = async (
 
     // 🚨 IMPORTANT: handle missing profile
     if (!profile) {
-        throw new Error('Profile not found. Create profile first.');
+        throw new ApiError(404, 'Profile not found. Create profile first.');
+    }
+
+    return profile;
+};
+
+export const uploadProfileImage = async (
+    userId: string,
+    file: Express.Multer.File,
+) => {
+    if (!file) throw new ApiError(400, 'No file uploaded');
+
+    // ✅ upload to cloudinary (images folder)
+    const result = await new Promise<any>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { resource_type: 'auto', folder: 'profile-images' },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            },
+        );
+
+        stream.end(file.buffer);
+    });
+
+    // ✅ PATCH-style update
+    const profile = await CandidateProfile.findOneAndUpdate(
+        { user: new Types.ObjectId(userId) },
+        {
+            $set: {
+                'profileImage.url': result.secure_url,
+                'profileImage.fileName': file.originalname,
+                'profileImage.uploadedAt': new Date(),
+            },
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+        },
+    ).lean();
+
+    // 🚨 IMPORTANT: handle missing profile
+    if (!profile) {
+        throw new ApiError(404, 'Profile not found. Create profile first.');
     }
 
     return profile;
@@ -110,7 +162,7 @@ export const updateProfileSection = async (
     );
 
     if (!updatedProfile) {
-        throw new Error('Profile not found');
+        throw new ApiError(404, 'Profile not found');
     }
 
     const completion = calculateProfileCompletion(updatedProfile);
