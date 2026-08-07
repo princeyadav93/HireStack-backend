@@ -1,0 +1,44 @@
+name: CI
+
+# Runs on every push to a long-lived branch, and on every PR into QA or
+# production — so a broken change is caught before it can be merged.
+on:
+    push:
+        branches: [dev, QA, production]
+    pull_request:
+        branches: [QA, production]
+
+# A new push to the same branch cancels the run already in flight; only the
+# latest commit's result is worth waiting for.
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        name: Typecheck and build
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            # `npm ci` (not `npm install`) — installs exactly what the lockfile
+            # pins and fails if package.json and the lockfile have drifted apart.
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Typecheck
+              run: npx tsc --noEmit
+
+            - name: Build
+              run: npm run build
+
+            # No test script yet; --if-present makes this a no-op until there is
+            # one, so adding tests later needs no change here.
+            - name: Test
+              run: npm test --if-present
