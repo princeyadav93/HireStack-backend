@@ -1,323 +1,394 @@
-# 🚀 HireStack Backend - Multi-Tenant Hiring Platform
+# HireStack — Backend
 
-A **production-ready**, **type-safe** Node.js backend for a modern hiring platform with robust **role-based access control**, **multi-tenant architecture**, and **enterprise-grade security practices**.
+A multi-tenant hiring platform API. Companies register, get approved by a platform
+admin, post jobs, and move candidates through a hiring pipeline. Candidates build a
+profile, browse published jobs, and apply.
+
+Built with **TypeScript + Express 5 + MongoDB (Mongoose 9)**, with cookie-based JWT
+auth, Zod validation, and strict per-company data isolation.
+
+> **Status:** actively built, not yet production-deployed. See
+> [ROADMAP.md](./ROADMAP.md) for what's done, what's next, and what's missing.
 
 ---
 
-## 🏗️ Architecture Overview
+## Table of contents
 
-HireStack operates on a **multi-tenant model** with **hierarchical, role-based access control** across three distinct layers:
+- [Quick start](#quick-start)
+- [Environment variables](#environment-variables)
+- [How the platform works](#how-the-platform-works)
+- [Roles and access control](#roles-and-access-control)
+- [API reference](#api-reference)
+- [Security](#security)
+- [Project structure](#project-structure)
+- [Branching and CI](#branching-and-ci)
+- [Deployment notes](#deployment-notes)
 
-### Access Control Layers
+---
 
-#### 🌍 Global Level (Platform Admin)
+## Quick start
 
-- **Platform Admin**: HireStack employees managing platform integrity
-    - Approve/reject company registrations
-    - Remove fraudulent companies & fake job postings
-    - Manage platform-wide policies
-    - Monitor system health & analytics
+**Requirements:** Node.js 20+, a MongoDB instance (local or Atlas), and a free
+[Cloudinary](https://cloudinary.com) account for file uploads.
 
-#### 🏢 Company Level (Hierarchical Roles)
+```bash
+git clone https://github.com/princeyadav93/HireStack-backend.git
+cd HireStack-backend
+npm install
 
-- **Owner**: Company ownership & billing
-    - ✅ Full access to all company operations
-    - Manage billing, subscriptions, and company settings
-    - Add/remove team members
-    - All Recruiter + Admin permissions inherited
+cp .env.example .env      # then fill in the values (see below)
 
-- **Admin**: Company administrator
-    - ✅ Full Recruiter permissions (job posting, deletion, management)
-    - Company settings & profile management
-    - Team member management & role assignments
-    - Cannot access billing
-
-- **Recruiter**: Job posting specialist
-    - ✅ Limited access: Create job postings
-    - Delete own job postings
-    - View job applications & candidate profiles
-    - Manage candidate interactions
-
-#### 👤 User Level (Global Roles)
-
-- **Candidate**: Job seeker
-    - Apply to jobs
-    - Manage personal profile & resume
-    - Track applications
-- **Recruiter/Admin/Owner**: See Company Level roles above
-
-#### Resource Level
-
-- Record-level permissions - users access only authorized data (company-isolated, user-owned records)
-
+npm run seed:admin        # creates the first platform admin
+npm run dev               # http://localhost:3000
 ```
-Platform Layer (Global)
-│
-├─ Global Admin (HireStack employees)
-│   └─ Manage companies, block frauds, monitor system
-│
-└─ Users (JWT Auth)
-    ├─ Candidate
-    │   └─ Personal profile & applications only
-    │
-    └─ Company Context → Multi-tenant data isolation
-        ├─ Owner
-        │   └─ Full Access: Billing, Team, Jobs, Settings
-        │       └─ Inherits: Admin + Recruiter permissions
-        │
-        ├─ Admin
-        │   └─ Full Access: Team, Jobs, Company Settings
-        │       └─ Inherits: Recruiter permissions
-        │
-        └─ Recruiter
-            └─ Limited Access: Create/Delete jobs, Review applications
+
+`GET /` returns `{ "status": "OK" }` when the server is up.
+
+### Scripts
+
+| Command              | Does                                                     |
+| -------------------- | -------------------------------------------------------- |
+| `npm run dev`        | Dev server with hot reload (`ts-node-dev`)               |
+| `npm run build`      | Compile TypeScript to `dist/`                            |
+| `npm start`          | Run the compiled build                                   |
+| `npm run seed:admin` | Create the first platform admin (see below)              |
+
+### Seeding the first admin
+
+`POST /admin/register` requires an existing admin, so the very first one is created
+out-of-band. Set `ADMIN_NAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env`, or pass
+them on the command line:
+
+```bash
+npm run seed:admin -- --name "Prince" --email admin@hirestack.dev --password "a-strong-password"
 ```
 
 ---
 
-## 🛠️ Tech Stack & Best Practices
+## Environment variables
 
-### Core Technologies
+**Required** — the server refuses to boot if any is missing:
 
-- **Runtime**: Node.js with **TypeScript** (strict mode enabled)
-- **Framework**: Express.js v5 with middleware pipeline
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JWT (JSON Web Tokens) with secure HTTP-only cookies
-- **Validation**: Zod schema validation
-- **Security**: Helmet, CORS with dynamic production settings, bcrypt password hashing
-- **File Uploads**: Cloudinary integration with multer (2MB limit, type validation)
-- **Logging**: Morgan request logging
+| Variable                  | Notes                                              |
+| ------------------------- | -------------------------------------------------- |
+| `MONGODB_URI`             | Connection string                                  |
+| `JWT_SECRET`              | Signs access tokens. Use 32+ random bytes.         |
+| `SALTROUNDS`              | bcrypt cost. `10`–`12` is sensible.                |
+| `CLOUDINARY_NAME`         | From the Cloudinary console                        |
+| `CLOUDINARY_API_KEY`      | ″                                                  |
+| `CLOUDINARY_API_SECRET`   | ″                                                  |
 
-### Code Quality Standards Implemented
+**Optional** — sensible defaults applied:
 
-✅ **Async/Await Wrapper** - Custom `asyncHandler` utility eliminates repeated try-catch boilerplate  
-✅ **Standardized API Responses** - Consistent JSON format: `{ success, data, message }`  
-✅ **Type Safety** - Full TypeScript compilation with `strict: true`, no unused variables  
-✅ **Input Validation** - DTO (Data Transfer Object) schemas with Zod validation  
-✅ **Error Handling** - Centralized error middleware with descriptive HTTP status codes  
-✅ **Environment Safety** - Required ENV validation on startup (fails fast if configs missing)  
-✅ **Database Transactions** - Multi-step operations wrapped in Mongoose transactions  
-✅ **Security Headers** - Helmet middleware for XSS, CSRF, clickjacking protection
+| Variable                 | Default                 | Notes                                                      |
+| ------------------------ | ----------------------- | ---------------------------------------------------------- |
+| `PORT`                   | `3000`                  |                                                            |
+| `NODE_ENV`               | `development`           | `production` enables secure cookies and hides 5xx detail   |
+| `CORS_ORIGIN`            | `http://localhost:3000` | **Comma-separated allowlist.** No wildcard — see below.    |
+| `REFRESH_TOKEN_SECRET`   | falls back to `JWT_SECRET` | Set it to something different in production.            |
+| `REFRESH_TOKEN_EXPIRY`   | `10d`                   |                                                            |
 
----
+Generate a secret with:
 
-## 📋 What's Implemented
-
-### Authentication & Authorization
-
-- JWT-based stateless authentication with secure HTTP-only cookies
-- **Granular Role-Based Access Control (RBAC)**:
-    - **Global Admin**: Platform employees with company moderation capabilities
-    - **Company Owner**: Full billing & team control, inherits all permissions
-    - **Company Admin**: Team & job management, inherits Recruiter permissions
-    - **Company Recruiter**: Job posting & candidate interaction (limited scope)
-    - **Candidate**: Job applications & profile management
-- Middleware-based role verification (`verifyJWT`, `verifyRecruiter`, etc.)
-- Secure password hashing with bcrypt
-- Production-grade HTTPS enforcement with secure cookies
-
-### Multi-Tenant Features
-
-- **Company Management**: Create, update, and manage company profiles (status: pending/approved/rejected)
-- **Team Management**: Add recruiters with hierarchical role assignments (Recruiter → Admin → Owner)
-- **Company-Scoped Data**: All resources (job postings, applications, candidates) are company-isolated
-- **Admin Moderation**: Global admins can approve, reject, or remove fraudulent companies
-
-### User Management
-
-- User registration & login with validation
-- Candidate profiles with resume uploads to Cloudinary
-- Recruiter profiles with company associations
-- Profile update with file validation
-
-### Data Integrity
-
-- Mongoose schema validation with `runValidators: true`
-- File type & size constraints enforced at API level
-- Request body size limits (16KB default)
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
 ---
 
-## 🔄 How It Works
+## How the platform works
 
-### Typical Flow: Candidate Applies to Job
+### A company gets onboarded
 
-1. **Candidate logs in** → JWT token issued, stored in HTTP-only cookie
-2. **Browse jobs** → Route uses `verifyJWT` middleware to authenticate
-3. **Submit application** → Application created with candidate ID & company context
-4. **Company-level isolation** → Only company recruiters can see applications for their company
+1. A recruiter self-registers at `POST /recruiter/register` — a global `recruiter` user.
+2. They call `POST /company/create`, which creates the company (`status: pending`) and
+   makes them its **OWNER**.
+3. A platform admin reviews it at `GET /admin/companies/pending` and approves or rejects it.
+4. Only an **approved** company can publish jobs. Suspension flips the status back, and
+   its jobs drop off the public board immediately — no rewriting of job records needed.
 
-### Typical Flow: Recruiter Creates & Manages Jobs
+### A job goes live
 
-1. **Recruiter logs in** → JWT token with company context attached
-2. **Create job posting** → Middleware verifies `verifyRecruiter` role
-3. **Post publicly** → Job visible to all candidates
-4. **Review applications** → See only candidates who applied to their company's jobs
-5. **Delete job** → Can delete only own postings
+`DRAFT` → `PUBLISHED` → `CLOSED`
 
-### Typical Flow: Company Owner Manages Team & Billing
+- Jobs are always created as `DRAFT`. Drafting needs no approval; **publishing does**.
+- `POST /jobs/:jobId/publish` re-checks the company's status at publish time.
+- `CLOSED` is terminal: a closed job cannot be edited or republished.
+- `DELETE /jobs/:jobId` is a **soft delete** (`isArchived: true`) so applications
+  against it stay readable for audit.
 
-1. **Owner logs in** → JWT token with owner privileges
-2. **Access company settings** → Full company profile, member list, billing portal
-3. **Add new Admin/Recruiter** → Assign roles with granular permissions
-4. **Manage subscriptions** → Billing, payment methods (Owner-only access)
-5. **All Recruiter/Admin actions available** → Owner inherits full permissions
+### A candidate applies
 
-### Typical Flow: Global Admin Moderates Platform
+1. Candidate registers, then uploads a résumé to their profile — **applying without one
+   is rejected**.
+2. `POST /jobs/:jobId/apply` checks the job is `PUBLISHED` *and* the company is still
+   approved, then creates the application inside a transaction that also increments the
+   job's `applicationCount`.
+3. The résumé URL is **snapshotted onto the application**, so later profile edits cannot
+   rewrite what a recruiter already reviewed.
+4. A unique index on `(jobId, candidateId)` makes double-applying impossible, even under
+   a race.
 
-1. **Platform Admin logs in** → Global admin privileges
-2. **Review pending companies** → List companies awaiting approval
-3. **Verify company legitimacy** → Approve enterprise domains auto-verify, manually verify Gmail/Yahoo users
-4. **Remove frauds** → Delete fake companies, block spam job postings
-5. **Monitor metrics** → View platform-wide analytics & health
+### The hiring pipeline
 
----
+```
+APPLIED ──► SHORTLISTED ──► INTERVIEW ──► HIRED
+   │             │              │
+   └─────────────┴──────────────┴────────► REJECTED
+```
 
-## � Module Status
-
-### Routes & Handlers (Implemented)
-
-| Module                | Route File                  | Controller                       | Service                       | Status      |
-| --------------------- | --------------------------- | -------------------------------- | ----------------------------- | ----------- |
-| **Authentication**    | `auth.route.ts`             | `auth.controller.ts`             | `auth.service.ts`             | ✅ Complete |
-| **Platform Admin**    | `platformAdmin.route.ts`    | `platformAdmin.controller.ts`    | `platformAdmin.service.ts`    | ✅ Complete |
-| **Company Owner**     | `companyOwner.route.ts`     | `companyOwner.controller.ts`     | `companyOwner.service.ts`     | ✅ Complete |
-| **Company Member**    | `companyMember.route.ts`    | `companyMembers.controller.ts`   | `companyMember.service.ts`    | ✅ Complete |
-| **Recruiter**         | `recruiter.route.ts`        | `recruiter.controller.ts`        | `recruiter.service.ts`        | ✅ Complete |
-| **Recruiter Profile** | `recruiterProfile.route.ts` | `recruiterProfile.controller.ts` | `recruiterProfile.service.ts` | ✅ Complete |
-| **Candidate**         | `candidate.route.ts`        | `candidate.controller.ts`        | `candidate.service.ts`        | ✅ Complete |
-| **Candidate Profile** | `candidateProfile.route.ts` | `candidateProfile.controller.ts` | `candidateProfile.service.ts` | ✅ Complete |
-| **Admin**             | `admin.route.ts`            | `admin.controller.ts`            | `admin.service.ts`            | ✅ Complete |
+`HIRED` and `REJECTED` are **terminal** — a rejected candidate cannot be quietly revived,
+and a hired one cannot be un-hired. Legal moves live in one table
+(`ALLOWED_APPLICATION_TRANSITIONS`) rather than scattered `if` chains, and every change
+is appended to `statusHistory` with who changed it and when.
 
 ---
 
-## 🏛️ Architecture Decisions
+## Roles and access control
 
-| Decision                  | Before                                        | Now                                            | Rationale                                           |
-| ------------------------- | --------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
-| **Member Creation**       | Invite/join flow                              | Top-down only                                  | Simplifies auth, prevents unauthorized access       |
-| **Recruiter Bootstrap**   | Multiple paths                                | Global self-register → creates company → OWNER | Single, clear onboarding path                       |
-| **Member Addition**       | Any role could invite                         | OWNER or ADMIN only                            | Enforces hierarchy, improves security               |
-| **Membership Model**      | `MembershipStatus` (enum), `MembershipSource` | Boolean `active` status                        | Cleaner data model, faster queries                  |
-| **Blocked Members**       | Separate status                               | `active: false`                                | Reduces DB schema complexity                        |
-| **Billing Admin**         | Separate role                                 | Removed (OWNER handles billing)                | Simplifies role model, OWNER inherits all           |
-| **Ownership Transfer**    | Allowed                                       | Not allowed                                    | Prevents unauthorized transfers, audit clarity      |
-| **Company ID Resolution** | From URL params                               | From CompanyMember record                      | Prevents parameter tampering, source of truth in DB |
+Access is decided at three levels: **platform**, **company**, and **record**.
 
----
+```
+Platform
+│
+├─ Platform Admin ── approve / reject / suspend companies, audit users
+│
+└─ Users (JWT)
+   ├─ Candidate ──── own profile + own applications only
+   │
+   └─ Company context (resolved from the CompanyMember record, never from the URL)
+      ├─ OWNER ───── everything below + create/remove admins + edit company
+      ├─ ADMIN ───── everything below + create/remove recruiters + delete jobs
+      └─ RECRUITER ─ create, edit, publish, close jobs; review applications
+```
 
-## 🔗 Cross-Module Dependencies
+**Company scope is never taken from the request.** `verifyCompanyMember` looks up the
+caller's `CompanyMember` record and attaches `req.companyId` from it. A user cannot reach
+another tenant's data by changing an ID in the URL — cross-tenant reads return **404, not
+403**, so the API doesn't even confirm the record exists.
 
-### Authentication Module
+### Middleware chain
 
-- **Entry point**: `/auth/register` (global recruiter only), `/auth/login`
-- **Outputs**: JWT token, company context
-- **Depends on**: User model, JWT config
-
-### Platform Admin Module (`platformAdmin.*`)
-
-- **Routes**: Approve/reject companies, remove fraudulent records
-- **Depends on**: Company model, global admin role verification
-- **Used by**: Platform admins only
-
-### Company Owner Module (`companyOwner.*`)
-
-- **Routes**: Create company (during recruiter self-register), manage company settings, manage billing
-- **Depends on**: Company model, CompanyMember model, User authentication
-- **Used by**: Company owners
-
-### Company Member Module (`companyMember.*`)
-
-- **Routes**: Create ADMIN/RECRUITER members (OWNER/ADMIN only), list members, update roles
-- **Depends on**: CompanyMember model (resolves companyId from record, not URL)
-- **Used by**: OWNER, ADMIN roles
-
-### Recruiter Module (`recruiter.*`)
-
-- **Routes**: Create/update/delete job postings
-- **Depends on**: Company context from CompanyMember, Job model
-- **Used by**: RECRUITER, ADMIN, OWNER roles
-
-### Candidate Module (`candidate.*`)
-
-- **Routes**: Apply to jobs, list applications
-- **Depends on**: User model, Application model
-- **Used by**: CANDIDATE role
-
-### Profile Modules (`recruiterProfile.*`, `candidateProfile.*`)
-
-- **Routes**: Update personal profiles, upload resumes/photos
-- **Depends on**: User model, Cloudinary integration
-- **Used by**: Respective user types
+| Middleware                  | Checks                                                    |
+| --------------------------- | --------------------------------------------------------- |
+| `verifyJWT`                 | Valid, non-revoked **access** token → attaches `req.user`  |
+| `verifyCandidate`           | `req.user.role === 'candidate'`                           |
+| `verifyRecruiter`           | `req.user.role === 'recruiter'`                           |
+| `verifyAdmin`               | Platform admin                                            |
+| `verifyCompanyMember`       | Active membership → attaches `req.companyId`, `req.companyMember` |
+| `verifyCompanyOwnerOrAdmin` | Membership role is OWNER or ADMIN                         |
+| `verifyCompanyOwner`        | Membership role is OWNER                                  |
 
 ---
 
-## ✋ Not Yet Started
+## API reference
 
-- **Job Analytics**: View counts, application metrics per recruiter/company
-- **Candidate Search**: Full-text search on skills, experience, location
-- **Bulk Operations**: Import candidates, batch job posting
-- **API Integrations**: ATS connectors, third-party service APIs
+All responses share one shape:
+
+```jsonc
+// success
+{ "statusCode": 200, "data": { }, "message": "...", "success": true }
+
+// failure
+{ "success": false, "message": "...", "errors": ["field: reason"] }
+```
+
+Auth is **httpOnly cookies**, not `Authorization` headers — send credentialed requests
+(`fetch(url, { credentials: 'include' })`).
+
+### Auth — `/auth`
+
+| Method | Path             | Access | Notes                                    |
+| ------ | ---------------- | ------ | ---------------------------------------- |
+| POST   | `/login`         | Public | Rate limited. Sets `token` cookie.       |
+| POST   | `/logout`        | Auth   | Revokes **all** existing tokens          |
+| POST   | `/refresh-token` | Public | Rotates the refresh token                |
+
+### Candidate — `/candidate`
+
+| Method | Path         | Access    |
+| ------ | ------------ | --------- |
+| POST   | `/register`  | Public    |
+| GET    | `/`          | Auth      |
+
+### Candidate profile — `/candidate/profile` *(candidate only)*
+
+| Method | Path              | Notes                       |
+| ------ | ----------------- | --------------------------- |
+| GET    | `/`               |                             |
+| PATCH  | `/basic`          |                             |
+| PATCH  | `/projects`       |                             |
+| PATCH  | `/experience`     |                             |
+| PATCH  | `/education`      |                             |
+| PATCH  | `/preferences`    |                             |
+| PATCH  | `/resume`         | multipart, max 2 MB         |
+| PATCH  | `/profile-image`  | multipart, max 2 MB         |
+
+### Recruiter — `/recruiter`
+
+| Method | Path        | Access |
+| ------ | ----------- | ------ |
+| POST   | `/register` | Public |
+
+### Recruiter profile — `/recruiter/profile` *(recruiter only)*
+
+| Method | Path              |
+| ------ | ----------------- |
+| GET    | `/`               |
+| PATCH  | `/personal-info`  |
+| PATCH  | `/social-links`   |
+| PATCH  | `/avatar`         |
+
+### Company — `/company`
+
+| Method | Path                            | Access             |
+| ------ | ------------------------------- | ------------------ |
+| POST   | `/create`                       | Recruiter          |
+| GET    | `/members`                      | Active member      |
+| GET    | `/members/recruiter`            | Active member      |
+| POST   | `/create-admin`                 | OWNER              |
+| POST   | `/create-recruiter`             | OWNER / ADMIN      |
+| DELETE | `/admins/:adminId`              | OWNER              |
+| DELETE | `/recruiters/:recruiterId`      | OWNER / ADMIN      |
+| PATCH  | `/block/member/:memberId`       | OWNER / ADMIN      |
+| PATCH  | `/unblock/member/:memberId`     | OWNER / ADMIN      |
+| GET    | `/:companyId`                   | Auth               |
+| PATCH  | `/:companyId`                   | OWNER (own company only) |
+
+### Platform admin — `/admin` *(platform admin only)*
+
+| Method | Path                                  | Notes                        |
+| ------ | ------------------------------------- | ---------------------------- |
+| POST   | `/register`                           | Creates another admin        |
+| GET    | `/companies/pending`                  |                              |
+| GET    | `/companies`                          | Audit view                   |
+| POST   | `/companies/approve/:companyId`       |                              |
+| POST   | `/companies/:companyId/reject`        |                              |
+| POST   | `/companies/:companyId/suspend`       |                              |
+| POST   | `/companies/:companyId/unsuspend`     |                              |
+| GET    | `/platform/companies`                 | Paginated                    |
+| GET    | `/platform/users`                     | Paginated                    |
+| DELETE | `/platform/companies/:companyId`      | Soft delete                  |
+
+### Jobs — `/jobs`
+
+| Method | Path                   | Access         | Notes                                 |
+| ------ | ---------------------- | -------------- | ------------------------------------- |
+| GET    | `/`                    | **Public**     | Published jobs, approved companies    |
+| GET    | `/:jobId`              | **Public**     | Published detail                      |
+| GET    | `/manage`              | Company member | Own board, drafts included            |
+| GET    | `/manage/:jobId`       | Company member | Own detail, drafts included           |
+| POST   | `/`                    | Company member | Created as `DRAFT`                    |
+| PATCH  | `/:jobId`              | Company member | Rejected once `CLOSED`                |
+| POST   | `/:jobId/publish`      | Company member | Requires an **approved** company      |
+| POST   | `/:jobId/close`        | Company member |                                       |
+| DELETE | `/:jobId`              | OWNER / ADMIN  | Soft delete                           |
+| POST   | `/:jobId/apply`        | Candidate      | Requires a résumé on file             |
+| GET    | `/:jobId/applications` | Company member | The pipeline for that job             |
+
+**Public board filters:** `search`, `skills` (comma-separated), `employmentType`,
+`workMode`, `city`, `minExperience`, `maxSalary`, `page`, `limit`.
+
+### Applications — `/applications`
+
+| Method | Path                        | Access                            |
+| ------ | --------------------------- | --------------------------------- |
+| GET    | `/me`                       | Candidate — own applications      |
+| GET    | `/:applicationId`           | The applicant, or the owning company |
+| PATCH  | `/:applicationId/status`    | Company member                    |
 
 ---
 
-## �🚀 What's Next
+## Security
 
-### Phase 1: Company Verification & Role Expansion (Smart Email Domain Validation)
-
-- **Owner Role Implementation**: Full company & billing management access
-- **Admin Role Implementation**: Team & job management with Recruiter permission inheritance
-- **Enterprise Domain Auto-Verify**: Automatic approval for official company emails (recruiter@companyname.com)
-- **Alternative Verification**: Manual approval workflow for small businesses using free email domains (Gmail, Yahoo, Outlook)
-- **Fraud Detection**: Global admin dashboard to review and reject suspicious company registrations
-- **Company Status Tracking**: Full lifecycle (pending → approved/rejected → active/blocked)
-
-### Phase 2: Job Posting & Matching
-
-- Full-text search for candidates (skills, location, experience, role)
-- Job posting creation with company context & visibility controls
-- Intelligent candidate-job matching algorithm
-- Job analytics (views, applications, conversion rates)
-
-### Phase 3: Analytics & Insights
-
-- Recruitment pipeline analytics per company
-- Time-to-hire metrics & candidate flow tracking
-- Team performance insights (recruiter stats)
-- Platform-wide metrics (total companies, active jobs, placements)
-
-### Phase 4: Premium Features
-
-- Billing & subscription management (Owner role)
-- Advanced search filters & saved searches
-- Bulk operations (import candidates, batch job posting)
-- API integrations with ATS (Applicant Tracking Systems)
+| Concern                | How it's handled                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Password storage       | bcrypt, configurable cost. `password` has `select: false` and is stripped again in `toJSON`.                  |
+| Token transport        | httpOnly cookies — JavaScript on the page cannot read them. `secure` + `sameSite: strict` in production.      |
+| Token confusion        | Access and refresh tokens carry a `type` claim; an endpoint expecting one rejects the other outright.         |
+| Logout / revocation    | Logout increments `tokenVersion`, retiring **every** token issued before it. Checked on each request.         |
+| Login enumeration      | Wrong email and wrong password return the identical 401, and a dummy bcrypt compare keeps timing flat.        |
+| Brute force            | Login: 10 attempts / 15 min (successes don't count). Registration: 20 / hour. Global ceiling: 300 / 15 min.   |
+| Cross-tenant access    | Company scope comes from the DB membership record, never the URL. Foreign records read as 404.                |
+| Privilege escalation   | `POST /admin/register` requires an existing admin. The first is seeded from the CLI.                          |
+| Injection via search   | User search terms are regex-escaped before reaching a `$regex` query.                                         |
+| Unbounded queries      | `limit` is clamped to 100, `page` to ≥ 1.                                                                     |
+| Payload size           | JSON and form bodies capped at 16 KB; uploads at 2 MB with type validation.                                   |
+| Response headers       | `helmet()`                                                                                                    |
+| CORS                   | Explicit origin allowlist with credentials. Unlisted origins are rejected with 403 — no wildcard is possible. |
+| Error leakage          | 5xx messages are replaced with a generic string in production; stack traces never reach the client.           |
 
 ---
 
-## 📦 Project Structure
+## Project structure
 
 ```
 src/
-├── config/          # Environment & service configs (MongoDB, Cloudinary, JWT)
-├── controllers/     # Request handlers for each resource
-├── middleware/      # Auth, error handling, role verification, file uploads
-├── models/          # Mongoose schemas (User, Company, Recruiter, Profile)
-├── routes/          # API endpoint definitions
-├── services/        # Business logic (register, login, profile management)
-├── dtos/            # Zod schemas for input validation
-├── types/           # TypeScript type definitions
-├── utils/           # Helpers (asyncHandler, ApiError, validators)
-└── constants.ts     # Global constants (HTTP status, cookie options)
+├── config/        env validation, MongoDB, Cloudinary
+├── constants/     enums (roles, job/application status, transition table)
+├── constants.ts   HTTP status codes, cookie options, pagination limits
+├── controllers/   HTTP layer — parse, delegate, respond
+├── dtos/          Zod schemas; the only place request shapes are defined
+├── middleware/    auth, role checks, rate limits, uploads, error handling
+├── models/        Mongoose schemas and indexes
+├── routes/        endpoint definitions
+├── scripts/       seedAdmin
+├── services/      business logic; everything that touches the DB
+├── types/         shared TypeScript interfaces
+└── utils/         ApiError, ApiResponse, asyncHandler, pagination, helpers
 ```
+
+**The rule:** routes wire, controllers translate HTTP, services decide. Controllers never
+query the database and services never touch `req` or `res`.
+
+Two ordering constraints are load-bearing and commented in place:
+
+- In `app.ts`, `companyMemberRouter` mounts **before** `companyOwnerRouter`, because the
+  latter owns `GET /:companyId`, which would otherwise swallow `GET /company/members`.
+- In `job.route.ts`, `/manage` and `/manage/:jobId` are registered **before** `/:jobId`.
 
 ---
 
-## 🤝 Contributing
+## Branching and CI
 
-This project follows strict TypeScript & code quality standards. Ensure new features include:
+| Branch       | Purpose                            | Protection                                                  |
+| ------------ | ---------------------------------- | ----------------------------------------------------------- |
+| `production` | Default. Deployable at all times.  | No deletion, no force-push, PR required, CI must pass        |
+| `QA`         | Integration / pre-release testing  | No deletion, no force-push                                   |
+| `dev`        | Day-to-day work                    | No deletion, no force-push                                   |
 
-- Type-safe implementations
-- Input validation via Zod DTOs
-- Proper error handling with descriptive messages
-- Unit tests for business logic
+Flow: `dev` → PR into `QA` → PR into `production`. Repository admins can bypass on all
+three, which keeps solo work unblocked without removing the guard rails.
+
+**CI** (`.github/workflows/ci.yml`) runs on every push to those branches and on every PR
+into `QA` or `production`:
+
+1. `npm ci` — fails if `package.json` and the lockfile have drifted
+2. `npx tsc --noEmit` — typecheck
+3. `npm run build`
+4. `npm test --if-present` — a no-op until a test suite exists
+
+---
+
+## Deployment notes
+
+- **Set `NODE_ENV=production`.** It switches cookies to `secure` + `sameSite: strict` and
+  stops 5xx responses leaking internal detail.
+- **Behind a reverse proxy** (nginx, Heroku, Render, Railway), add
+  `app.set('trust proxy', 1)` in `src/app.ts`, or rate limiting will see the proxy's IP
+  for every request and throttle all users as one. Use `1`, not `true` — trusting every
+  hop lets a client forge `X-Forwarded-For` and skip the limiter entirely.
+- **Use a distinct `REFRESH_TOKEN_SECRET`.** It falls back to `JWT_SECRET`, which is fine
+  for local work but means one leaked secret compromises both token types.
+- **`CORS_ORIGIN` must list the real frontend origin(s).** Anything not listed gets a 403.
+- **Rate limit counters are in-memory**, so they are per-process and reset on restart.
+  Move to a shared store (Redis) before running more than one instance.
+
+---
+
+## Contributing
+
+- Types stay strict — no `any` in new code without a comment saying why.
+- Every request body goes through a Zod DTO in `src/dtos/`.
+- Business logic lives in services, not controllers.
+- Errors are thrown as `ApiError`; the global handler maps them to a response.
