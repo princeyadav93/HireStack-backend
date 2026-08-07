@@ -208,8 +208,21 @@ export const updateCompanyController = asyncHandler(
             );
         }
 
+        // Set by verifyCompanyMember from the caller's membership record.
+        if (!req.companyId) {
+            throw new ApiError(
+                HTTP_STATUS.FORBIDDEN,
+                'You are not a member of any company',
+            );
+        }
+
         const parsed = UpdateCompanyDTO.parse(req.body);
-        const updated = await updateCompanyService(companyId, userId, parsed);
+        const updated = await updateCompanyService(
+            companyId,
+            userId,
+            parsed,
+            req.companyId,
+        );
 
         res.status(HTTP_STATUS.OK).json(
             new ApiResponse(

@@ -4,6 +4,7 @@ import {
     registerCandidate,
 } from '../controllers/candidate.controller';
 import { verifyJWT } from '../middleware/auth.middleware';
+import { registerLimiter } from '../middleware/rateLimit.middleware';
 
 const router = express.Router();
 
@@ -11,6 +12,6 @@ const router = express.Router();
 // Login/Logout handled by global auth routes
 router.get('/', verifyJWT, getCandidateController);
 
-router.post('/register', registerCandidate);
+router.post('/register', registerLimiter, registerCandidate);
 
 export default router;

@@ -20,12 +20,35 @@ export interface LoginInput {
 }
 
 /**
+ * Token kind — carried in every token so a refresh token can never be
+ * replayed as an access token (both may be signed with the same secret).
+ */
+export const TOKEN_TYPE = {
+    ACCESS: 'access',
+    REFRESH: 'refresh',
+} as const;
+
+export type TokenType = (typeof TOKEN_TYPE)[keyof typeof TOKEN_TYPE];
+
+/**
  * JWT Payload Type
  */
 export interface JwtPayload {
     userId: string;
     email: string;
     role: string;
+    tokenVersion: number;
+    type: TokenType;
+    iat?: number;
+    exp?: number;
+}
+
+/**
+ * Refresh token payload — deliberately minimal.
+ */
+export interface RefreshPayload {
+    userId: string;
+    type: TokenType;
     iat?: number;
     exp?: number;
 }

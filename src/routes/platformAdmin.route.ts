@@ -16,8 +16,10 @@ import {
 
 const router = express.Router();
 
-// Admin registration (for testing)
-router.post('/register', registerAdmin);
+// Creating a platform admin is an admin-only action. This route used to be
+// public, which let anyone grant themselves full platform control.
+// The first admin is created out-of-band: `npm run seed:admin`.
+router.post('/register', verifyJWT, verifyAdmin, registerAdmin);
 
 // Company verification endpoints (admin only)
 router.get(

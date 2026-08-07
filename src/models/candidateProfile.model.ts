@@ -36,6 +36,9 @@ const candidateProfileSchema = new Schema<ICandidateProfile>(
 
         resume: {
             url: { type: String },
+            // uploadResume writes this; without it in the schema Mongoose's
+            // strict mode silently discarded the original filename.
+            fileName: { type: String },
             uploadedAt: { type: Date },
         },
 

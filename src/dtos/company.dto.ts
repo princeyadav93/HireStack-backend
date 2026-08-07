@@ -32,7 +32,7 @@ export const CreateAdminDTO = z.object({
         .min(2, 'Name must be at least 2 characters')
         .max(50, 'Name must not exceed 50 characters'),
     email: z.email('Invalid email address').toLowerCase(),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 export type CreateAdminType = z.infer<typeof CreateAdminDTO>;
@@ -44,7 +44,7 @@ export const CreateRecruiterDTO = z.object({
         .min(2, 'Name must be at least 2 characters')
         .max(50, 'Name must not exceed 50 characters'),
     email: z.email('Invalid email address').toLowerCase(),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 export type CreateRecruiterType = z.infer<typeof CreateRecruiterDTO>;

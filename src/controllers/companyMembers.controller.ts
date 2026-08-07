@@ -9,6 +9,7 @@ import {
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { ApiResponse } from '../utils/ApiResponse';
+import { getPagination } from '../utils/pagination';
 
 export const getCompanyMembersController = asyncHandler(
     async (req: Request, res: Response) => {
@@ -21,8 +22,7 @@ export const getCompanyMembersController = asyncHandler(
             );
         }
 
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        const { page, limit } = getPagination(req.query);
 
         const result = await getCompanyMembersService(companyId, page, limit);
 
@@ -113,8 +113,7 @@ export const getCompanyRecruitersController = asyncHandler(
             );
         }
 
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        const { page, limit } = getPagination(req.query);
 
         const result = await getCompanyRecruitersService(
             companyId,

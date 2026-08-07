@@ -16,9 +16,7 @@ import {
     UpdateCompanyType,
 } from '../dtos/company.dto';
 import { ENV } from '../config/env';
-
-const escapeRegex = (value: string): string =>
-    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+import { escapeRegex } from '../utils/escapeRegex';
 
 export const createCompanyService = async (
     data: CreateCompanyType,
@@ -344,10 +342,17 @@ export const getCompanyService = async (companyId: string, userId: string) => {
     return company as unknown as ICompany;
 };
 
+/**
+ * @param companyId       company named in the URL
+ * @param userId          caller
+ * @param actingCompanyId company the caller is actually an owner of, taken
+ *                        from their membership record — never from the request
+ */
 export const updateCompanyService = async (
     companyId: string,
     userId: string,
     data: UpdateCompanyType,
+    actingCompanyId: string,
 ) => {
     if (!Types.ObjectId.isValid(companyId)) {
         throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid company ID');
@@ -355,6 +360,15 @@ export const updateCompanyService = async (
 
     if (!Types.ObjectId.isValid(userId)) {
         throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid user ID');
+    }
+
+    // Owning *a* company is not permission to edit *any* company. Without this
+    // check, any owner could rewrite a competitor's record by changing the URL.
+    if (companyId !== actingCompanyId) {
+        throw new ApiError(
+            HTTP_STATUS.FORBIDDEN,
+            'You can only update your own company',
+        );
     }
 
     const company = await Company.findById(companyId).lean();

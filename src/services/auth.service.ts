@@ -1,12 +1,23 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { User, IUser } from '../models/user.model';
-import { LoginInput } from '../types/auth.types';
+import { LoginInput, RefreshPayload, TOKEN_TYPE } from '../types/auth.types';
 import { ENV } from '../config/env';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 
 // ─── Helpers ─────────────────────────────────────────────────
+
+// Compared against when the email does not exist, so a missing account costs
+// the same time as a wrong password and cannot be detected by timing.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
+    'password-that-never-matches',
+    ENV.SALTROUNDS,
+);
+
+// Deliberately identical for "no such email" and "wrong password" — a
+// different message for each turns login into an account-enumeration oracle.
+const INVALID_CREDENTIALS = 'Invalid email or password';
 
 const generateAndStoreTokens = async (
     user: IUser,
@@ -39,18 +50,17 @@ export const loginService = async (
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
-        throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid email');
+        await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+        throw new ApiError(HTTP_STATUS.UNAUTHORIZED, INVALID_CREDENTIALS);
     }
 
     const isMatch = await user.isPasswordCorrect(password);
 
     if (!isMatch) {
-        throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid password');
+        throw new ApiError(HTTP_STATUS.UNAUTHORIZED, INVALID_CREDENTIALS);
     }
 
     const { accessToken, refreshToken } = await generateAndStoreTokens(user);
-
-    user.password = '';
 
     return { user, accessToken, refreshToken };
 };
@@ -62,9 +72,11 @@ export const logoutService = async (
         throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
     }
 
+    // Clearing the refresh token alone would leave the already-issued access
+    // token valid until it expires; bumping tokenVersion retires it now.
     await User.findByIdAndUpdate(
         userId,
-        { $unset: { refreshToken: '' } },
+        { $unset: { refreshToken: '' }, $inc: { tokenVersion: 1 } },
         { new: true, runValidators: true },
     );
 };
@@ -76,18 +88,24 @@ export const refreshTokenService = async (
         throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'No refresh token');
     }
 
-    let decoded: { userId: string };
+    let decoded: RefreshPayload;
 
     try {
         decoded = jwt.verify(
             incomingRefreshToken,
             ENV.REFRESH_TOKEN_SECRET,
-        ) as { userId: string };
+        ) as RefreshPayload;
     } catch {
         throw new ApiError(
             HTTP_STATUS.UNAUTHORIZED,
             'Invalid or expired refresh token',
         );
+    }
+
+    // Reject an access token presented here — it would otherwise mint a fresh
+    // token pair whenever both secrets are the same value.
+    if (decoded.type !== TOKEN_TYPE.REFRESH) {
+        throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Invalid token type');
     }
 
     const user = await User.findById(decoded.userId).select('+refreshToken');

@@ -4,6 +4,7 @@ import { HTTP_STATUS } from '../constants';
 import { ApiResponse } from '../utils/ApiResponse';
 import { ApiError } from '../utils/ApiError';
 import { formatCompanyForRole } from '../utils/formatCompanyResponse';
+import { getPagination } from '../utils/pagination';
 import {
     getPendingCompaniesService,
     approveCompanyService,
@@ -215,8 +216,7 @@ export const getCompaniesController = asyncHandler(
  */
 export const getAllCompaniesController = asyncHandler(
     async (req: Request, res: Response) => {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        const { page, limit } = getPagination(req.query);
         const status = req.query.status
             ? (req.query.status as string).split(',').filter((s) => s.trim())
             : undefined;
@@ -244,8 +244,7 @@ export const getAllCompaniesController = asyncHandler(
  */
 export const getAllUsersController = asyncHandler(
     async (req: Request, res: Response) => {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        const { page, limit } = getPagination(req.query);
         const role = req.query.role as string;
 
         const result = await getAllUsersService(page, limit, { role });

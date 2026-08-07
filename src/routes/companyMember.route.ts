@@ -30,15 +30,19 @@ router.get(
     getCompanyRecruitersController,
 );
 
+// verifyCompanyOwnerOrAdmin reads req.companyMember, which only
+// verifyCompanyMember sets — without it these routes always returned 403.
 router.patch(
     '/block/member/:memberId',
     verifyJWT,
+    verifyCompanyMember,
     verifyCompanyOwnerOrAdmin,
     blockMemberController,
 );
 router.patch(
     '/unblock/member/:memberId',
     verifyJWT,
+    verifyCompanyMember,
     verifyCompanyOwnerOrAdmin,
     unblockMemberController,
 );

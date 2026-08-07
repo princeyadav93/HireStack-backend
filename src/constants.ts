@@ -16,5 +16,15 @@ export const HTTP_STATUS = {
     FORBIDDEN: 403,
     NOT_FOUND: 404,
     ALREADY_EXISTS: 409,
+    PAYLOAD_TOO_LARGE: 413,
+    TOO_MANY_REQUESTS: 429,
     INTERNAL_SERVER: 500,
+} as const;
+
+// Pagination guard rails — an unbounded `limit` lets a caller pull the whole
+// collection in one query.
+export const PAGINATION = {
+    DEFAULT_PAGE: 1,
+    DEFAULT_LIMIT: 10,
+    MAX_LIMIT: 100,
 } as const;

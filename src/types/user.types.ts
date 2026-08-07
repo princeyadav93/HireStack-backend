@@ -7,6 +7,8 @@ export interface IUser extends Document {
     password: string;
     role: 'candidate' | 'recruiter' | 'admin';
     refreshToken?: string; // hashed, optional (null when logged out)
+    // Bumped on logout so already-issued access tokens stop being accepted.
+    tokenVersion: number;
     createdAt: Date;
     updatedAt: Date;
 
