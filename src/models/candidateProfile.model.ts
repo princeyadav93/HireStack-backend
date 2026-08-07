@@ -1,52 +1,7 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
+// src/models/candidateProfile.model.ts
 
-export interface ICandidateProfile extends Document {
-    user: Types.ObjectId;
-
-    skills: string[];
-
-    projects: {
-        projectUrl?: string;
-        projectName: string;
-        projectDesc?: string;
-        techStack: string[];
-    }[];
-
-    resume: {
-        fileName?: string;
-        url?: string;
-        uploadedAt?: Date;
-    };
-
-    github?: string;
-    linkedin?: string;
-
-    preferences: {
-        desiredRole?: string;
-        expectedSalary?: number | 0;
-        locations?: string[];
-        remote?: boolean | false;
-        jobType?: 'FULL_TIME' | 'PART_TIME' | 'INTERNSHIP';
-    };
-
-    experience: {
-        company: string;
-        role: string;
-        startDate: Date;
-        endDate?: Date;
-    }[];
-
-    education: {
-        degree: string;
-        college: string;
-        year: number;
-    }[];
-
-    profileCompletion: number;
-
-    createdAt: Date;
-    updatedAt: Date;
-}
+import mongoose, { Schema } from 'mongoose';
+import { ICandidateProfile } from '../types/candidate.types';
 
 const candidateProfileSchema = new Schema<ICandidateProfile>(
     {
@@ -81,7 +36,16 @@ const candidateProfileSchema = new Schema<ICandidateProfile>(
 
         resume: {
             url: { type: String },
+            // uploadResume writes this; without it in the schema Mongoose's
+            // strict mode silently discarded the original filename.
+            fileName: { type: String },
             uploadedAt: { type: Date },
+        },
+
+        profileImage: {
+            url: String,
+            fileName: String,
+            uploadedAt: Date,
         },
 
         github: {
@@ -149,13 +113,11 @@ candidateProfileSchema.index({ 'preferences.locations': 1 });
 candidateProfileSchema.index({ 'preferences.remote': 1 });
 
 // Compound index for search
-candidateProfileSchema.index({
-    skills: 1,
-    'preferences.locations': 1,
-    'preferences.desiredRole': 1,
-});
 
 export const CandidateProfile = mongoose.model<ICandidateProfile>(
     'CandidateProfile',
     candidateProfileSchema,
 );
+
+// Re-export type for convenience
+export type { ICandidateProfile } from '../types/candidate.types';

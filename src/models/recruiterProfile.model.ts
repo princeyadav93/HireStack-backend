@@ -1,29 +1,5 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
-
-export interface IRecruiterProfile extends Document {
-    user: Types.ObjectId;
-    company?: Types.ObjectId; // Reference to Company model
-    title?: string;
-    department?: string;
-    bio?: string;
-    phone?: string;
-    profileImage?: {
-        url?: string;
-        fileName?: string;
-        uploadedAt?: Date;
-    };
-    socialLinks?: {
-        linkedin?: string;
-        twitter?: string;
-        website?: string;
-    };
-    jobsPosted: number;
-    candidatesHired: number;
-    createdAt: Date;
-    updatedAt: Date;
-    companyRole?: 'owner' | 'admin' | 'recruiter'; // Role within the company
-    isVerified: boolean; // Whether the recruiter is verified by the platform
-}
+import mongoose, { Schema } from 'mongoose';
+import { IRecruiterProfile } from '../types/recruiter.types';
 
 const recruiterProfileSchema = new Schema<IRecruiterProfile>(
     {
@@ -34,9 +10,10 @@ const recruiterProfileSchema = new Schema<IRecruiterProfile>(
             unique: true,
             index: true,
         },
-        company: {
+        currentCompanyId: {
             type: Schema.Types.ObjectId,
             ref: 'Company',
+            default: null,
         },
         title: {
             type: String,
@@ -82,15 +59,6 @@ const recruiterProfileSchema = new Schema<IRecruiterProfile>(
             type: Number,
             default: 0,
             min: 0,
-        },
-        companyRole: {
-            type: String,
-            enum: ['owner', 'admin', 'recruiter'],
-            default: 'recruiter',
-        },
-        isVerified: {
-            type: Boolean,
-            default: false,
         },
     },
     {

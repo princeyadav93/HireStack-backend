@@ -1,10 +1,38 @@
-export interface RegisterInput {
+import { Document, Types } from 'mongoose';
+
+export interface IUser extends Document {
+    _id: Types.ObjectId;
     name: string;
     email: string;
     password: string;
+    role: 'candidate' | 'recruiter' | 'admin';
+    refreshToken?: string; // hashed, optional (null when logged out)
+    // Bumped on logout so already-issued access tokens stop being accepted.
+    tokenVersion: number;
+    createdAt: Date;
+    updatedAt: Date;
+
+    isPasswordCorrect(password: string): Promise<boolean>;
+    accessTokenGenerate(): string;
+    refreshTokenGenerate(): string;
 }
 
-export interface LoginInput {
+export interface IUserSafe {
+    _id: Types.ObjectId;
+    name: string;
     email: string;
-    password: string;
+    role: 'candidate' | 'recruiter' | 'admin';
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export enum UserRole {
+    CANDIDATE = 'candidate',
+    RECRUITER = 'recruiter',
+    ADMIN = 'admin',
+}
+
+export interface IUserWithProfile extends IUser {
+    profileCompletion?: number;
+    profileType?: 'candidate' | 'recruiter';
 }

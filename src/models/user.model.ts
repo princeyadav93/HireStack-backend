@@ -1,20 +1,10 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import { IUser } from '../types/user.types';
+import { TOKEN_TYPE } from '../types/auth.types';
+import { ENV } from '../config/env';
 
-// ─── Interface ───────────────────────────────────────────────
-export interface IUser extends Document {
-    name: string;
-    email: string;
-    password: string;
-    role: string;
-
-    // Custom methods
-    isPasswordCorrect(password: string): Promise<boolean>;
-    accessTokenGenerate(): string;
-    refreshTokenGenerate(): string;
-}
-
-// ─── Schema ──────────────────────────────────────────────────
 const userSchema = new Schema<IUser>(
     {
         name: {
@@ -43,18 +33,58 @@ const userSchema = new Schema<IUser>(
             enum: ['candidate', 'recruiter', 'admin'],
             default: 'candidate',
         },
+        refreshToken: {
+            type: String,
+            select: false, // never returned by default
+        },
+        tokenVersion: {
+            type: Number,
+            default: 0,
+        },
     },
-    {
-        timestamps: true,
-    },
+    { timestamps: true },
 );
 
-// ─── Methods ─────────────────────────────────────────────────
+// Belt and braces: even if a query forgets `.select('-password')`, secrets
+// never reach a JSON response body.
+userSchema.set('toJSON', {
+    transform: (_doc, ret) => {
+        const plain = ret as unknown as Record<string, unknown>;
+        delete plain.password;
+        delete plain.refreshToken;
+        delete plain.tokenVersion;
+        delete plain.__v;
+        return plain;
+    },
+});
+
 userSchema.methods.isPasswordCorrect = async function (
     password: string,
 ): Promise<boolean> {
     return await bcrypt.compare(password, this.password);
 };
 
-// ─── Export ──────────────────────────────────────────────────
+userSchema.methods.accessTokenGenerate = function (): string {
+    return jwt.sign(
+        {
+            userId: this._id,
+            email: this.email,
+            role: this.role,
+            tokenVersion: this.tokenVersion ?? 0,
+            type: TOKEN_TYPE.ACCESS,
+        },
+        ENV.JWT_SECRET,
+        { expiresIn: '1d' },
+    );
+};
+
+userSchema.methods.refreshTokenGenerate = function (): string {
+    return jwt.sign(
+        { userId: this._id, type: TOKEN_TYPE.REFRESH },
+        ENV.REFRESH_TOKEN_SECRET,
+        { expiresIn: ENV.REFRESH_TOKEN_EXPIRY as unknown as number },
+    );
+};
+
+export type { IUser } from '../types/user.types';
 export const User = mongoose.model<IUser>('User', userSchema);

@@ -1,0 +1,1099 @@
+{
+    "info": {
+        "name": "HireStack Phase 2 - Authentication & Authorization API",
+        "description": "Complete test collection for company membership management and RBAC system",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "apiVersion": "1.0.0",
+        "timestamp": "2026-04-17"
+    },
+    "baseUrl": "http://localhost:5000/api",
+    "auth": {
+        "type": "bearer",
+        "description": "JWT token obtained from user login"
+    },
+    "testData": {
+        "users": {
+            "recruiter1": {
+                "id": "user_001_recruiter",
+                "email": "recruiter1@hirestack.com",
+                "role": "RECRUITER",
+                "token": "jwt_token_recruiter_1"
+            },
+            "recruiter2": {
+                "id": "user_002_recruiter",
+                "email": "recruiter2@hirestack.com",
+                "role": "RECRUITER",
+                "token": "jwt_token_recruiter_2"
+            },
+            "recruiter3": {
+                "id": "user_003_recruiter",
+                "email": "recruiter3@hirestack.com",
+                "role": "RECRUITER",
+                "token": "jwt_token_recruiter_3"
+            },
+            "candidate1": {
+                "id": "user_004_candidate",
+                "email": "candidate1@hirestack.com",
+                "role": "CANDIDATE",
+                "token": "jwt_token_candidate_1"
+            },
+            "admin": {
+                "id": "user_admin",
+                "email": "admin@hirestack.com",
+                "role": "ADMIN",
+                "token": "jwt_token_admin"
+            }
+        },
+        "companies": {
+            "company1": {
+                "id": "company_001",
+                "name": "TechCorp",
+                "ownerId": "user_001_recruiter"
+            },
+            "company2": {
+                "id": "company_002",
+                "name": "StartupXYZ",
+                "ownerId": "user_002_recruiter"
+            }
+        }
+    },
+    "endpoints": [
+        {
+            "name": "1. Create Company",
+            "method": "POST",
+            "path": "/company/create",
+            "description": "Only recruiters can create companies. Each recruiter can only create ONE company. Automatically creates recruiter as OWNER.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "name": "TechCorp Solutions",
+                "industry": "Software Development",
+                "size": "MEDIUM",
+                "description": "Leading software development company",
+                "website": "https://techcorp.com",
+                "location": {
+                    "city": "San Francisco",
+                    "state": "CA",
+                    "country": "USA"
+                }
+            },
+            "expectedResponse": {
+                "statusCode": 201,
+                "body": {
+                    "success": true,
+                    "message": "Company created successfully",
+                    "data": {
+                        "_id": "company_001",
+                        "name": "TechCorp Solutions",
+                        "industry": "Software Development",
+                        "size": "MEDIUM",
+                        "description": "Leading software development company",
+                        "website": "https://techcorp.com",
+                        "location": {
+                            "city": "San Francisco",
+                            "state": "CA",
+                            "country": "USA"
+                        },
+                        "owner": "user_001_recruiter",
+                        "billingAdmin": "user_001_recruiter",
+                        "members": [
+                            {
+                                "userId": "user_001_recruiter",
+                                "role": "OWNER",
+                                "status": "ACTIVE"
+                            }
+                        ],
+                        "isApproved": true,
+                        "isArchived": false,
+                        "createdAt": "2026-04-17T10:00:00Z"
+                    }
+                }
+            },
+            "notes": [
+                "Only RECRUITER role can create company",
+                "Automatically creates CompanyMember with role=OWNER, status=ACTIVE, source=CREATED",
+                "Sets billingAdmin = owner",
+                "Company starts as approved"
+            ]
+        },
+        {
+            "name": "2. Join Company (Request to Join)",
+            "method": "POST",
+            "path": "/company/join/{{company1_id}}",
+            "description": "Recruiter requests to join an existing company. Creates PENDING membership with source=REQUEST.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter2_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "invitationCode": ""
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Successfully submitted join request",
+                    "data": {
+                        "_id": "member_002",
+                        "userId": "user_002_recruiter",
+                        "companyId": "company_001",
+                        "role": "RECRUITER",
+                        "status": "PENDING",
+                        "source": "REQUEST",
+                        "invitedBy": null,
+                        "invitedAt": null,
+                        "approvedBy": null,
+                        "approvedAt": null,
+                        "rejectedBy": null,
+                        "rejectionReason": null,
+                        "rejectedAt": null,
+                        "removedBy": null,
+                        "removalReason": null,
+                        "removedAt": null,
+                        "createdAt": "2026-04-17T10:05:00Z"
+                    }
+                }
+            },
+            "notes": [
+                "Creates CompanyMember with status=PENDING, source=REQUEST",
+                "Recruiter cannot join if they already created a company",
+                "Company must be isApproved=true to allow joins",
+                "Needs OWNER/ADMIN approval to become ACTIVE"
+            ]
+        },
+        {
+            "name": "3. Invite Recruiter to Company",
+            "method": "POST",
+            "path": "/company/{{company1_id}}/invite",
+            "description": "OWNER or ADMIN invites a recruiter directly. Creates PENDING membership with source=INVITE.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "recruiterId": "user_003_recruiter"
+            },
+            "expectedResponse": {
+                "statusCode": 201,
+                "body": {
+                    "success": true,
+                    "message": "Recruiter invited successfully",
+                    "data": {
+                        "_id": "member_003",
+                        "userId": "user_003_recruiter",
+                        "companyId": "company_001",
+                        "role": "RECRUITER",
+                        "status": "PENDING",
+                        "source": "INVITE",
+                        "invitedBy": "user_001_recruiter",
+                        "invitedAt": "2026-04-17T10:10:00Z",
+                        "approvedBy": null,
+                        "approvedAt": null,
+                        "rejectedBy": null,
+                        "rejectionReason": null,
+                        "rejectedAt": null,
+                        "removedBy": null,
+                        "removalReason": null,
+                        "removedAt": null,
+                        "createdAt": "2026-04-17T10:10:00Z"
+                    }
+                }
+            },
+            "notes": [
+                "Only OWNER or ADMIN can invite",
+                "Creates CompanyMember with status=PENDING, source=INVITE",
+                "Tracks invitedBy and invitedAt for audit trail",
+                "Invited recruiter can accept (approve) or owner can approve for them"
+            ]
+        },
+        {
+            "name": "4. Approve Membership (Request or Invite)",
+            "method": "POST",
+            "path": "/company/{{company1_id}}/members/approve",
+            "description": "OWNER or ADMIN approves a PENDING membership request or invitation. Transitions to ACTIVE.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "memberId": "member_002"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Member approved and added to company",
+                    "data": {
+                        "_id": "member_002",
+                        "userId": "user_002_recruiter",
+                        "companyId": "company_001",
+                        "role": "RECRUITER",
+                        "status": "ACTIVE",
+                        "source": "REQUEST",
+                        "invitedBy": null,
+                        "approvedBy": "user_001_recruiter",
+                        "approvedAt": "2026-04-17T10:20:00Z",
+                        "rejectedBy": null,
+                        "rejectionReason": null,
+                        "rejectedAt": null,
+                        "removedBy": null,
+                        "removalReason": null,
+                        "removedAt": null,
+                        "createdAt": "2026-04-17T10:05:00Z"
+                    }
+                }
+            },
+            "notes": [
+                "Only OWNER or ADMIN can approve",
+                "Transitions PENDING → ACTIVE",
+                "Updates approvedBy and approvedAt (audit trail)",
+                "Adds member to Company.members denormalized array",
+                "Updates RecruiterProfile.currentCompanyId (denormalization)"
+            ]
+        },
+        {
+            "name": "5. Reject Membership (Request or Invite)",
+            "method": "POST",
+            "path": "/company/{{company1_id}}/members/reject",
+            "description": "OWNER or ADMIN rejects a PENDING membership. Sets status=REJECTED with reason.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "memberId": "member_003",
+                "reason": "Qualifications do not match current requirements"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Member application rejected",
+                    "data": {
+                        "_id": "member_003",
+                        "userId": "user_003_recruiter",
+                        "companyId": "company_001",
+                        "role": "RECRUITER",
+                        "status": "REJECTED",
+                        "source": "INVITE",
+                        "invitedBy": "user_001_recruiter",
+                        "invitedAt": "2026-04-17T10:10:00Z",
+                        "approvedBy": null,
+                        "approvedAt": null,
+                        "rejectedBy": "user_001_recruiter",
+                        "rejectionReason": "Qualifications do not match current requirements",
+                        "rejectedAt": "2026-04-17T10:25:00Z",
+                        "removedBy": null,
+                        "removalReason": null,
+                        "removedAt": null,
+                        "createdAt": "2026-04-17T10:10:00Z"
+                    }
+                }
+            },
+            "notes": [
+                "Only OWNER or ADMIN can reject",
+                "Transitions PENDING → REJECTED",
+                "Captures rejectedBy, rejectionReason, rejectedAt (full audit trail)",
+                "Soft delete: record preserved for audit purposes",
+                "User can reapply later if rejected"
+            ]
+        },
+        {
+            "name": "6. Remove Member from Company",
+            "method": "POST",
+            "path": "/company/{{company1_id}}/members/remove",
+            "description": "OWNER or ADMIN removes an ACTIVE member from company. Sets status=REMOVED with reason.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "memberId": "member_002",
+                "reason": "Performance issues and team mismatch"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Member removed from company",
+                    "data": {
+                        "_id": "member_002",
+                        "userId": "user_002_recruiter",
+                        "companyId": "company_001",
+                        "role": "RECRUITER",
+                        "status": "REMOVED",
+                        "source": "REQUEST",
+                        "invitedBy": null,
+                        "approvedBy": "user_001_recruiter",
+                        "approvedAt": "2026-04-17T10:20:00Z",
+                        "rejectedBy": null,
+                        "rejectionReason": null,
+                        "rejectedAt": null,
+                        "removedBy": "user_001_recruiter",
+                        "removalReason": "Performance issues and team mismatch",
+                        "removedAt": "2026-04-17T10:30:00Z",
+                        "createdAt": "2026-04-17T10:05:00Z"
+                    }
+                }
+            },
+            "notes": [
+                "Only OWNER or ADMIN can remove",
+                "Transitions ACTIVE → REMOVED",
+                "Cannot remove last OWNER (edge case protection)",
+                "Captures removedBy, removalReason, removedAt (full audit trail)",
+                "Soft delete: record preserved, removed from Company.members array",
+                "RecruiterProfile.currentCompanyId cleared"
+            ]
+        },
+        {
+            "name": "7. Change Member Role",
+            "method": "PUT",
+            "path": "/company/{{company1_id}}/members/role",
+            "description": "OWNER only changes member role. Can promote RECRUITER to ADMIN or demote ADMIN to RECRUITER. Cannot change OWNER role.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "memberId": "member_002",
+                "newRole": "ADMIN"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Member role updated",
+                    "data": {
+                        "_id": "member_002",
+                        "userId": "user_002_recruiter",
+                        "companyId": "company_001",
+                        "role": "ADMIN",
+                        "status": "ACTIVE",
+                        "source": "REQUEST",
+                        "invitedBy": null,
+                        "approvedBy": "user_001_recruiter",
+                        "approvedAt": "2026-04-17T10:20:00Z",
+                        "rejectedBy": null,
+                        "rejectionReason": null,
+                        "rejectedAt": null,
+                        "removedBy": null,
+                        "removalReason": null,
+                        "removedAt": null,
+                        "createdAt": "2026-04-17T10:05:00Z"
+                    }
+                }
+            },
+            "notes": [
+                "Only OWNER can change roles",
+                "Cannot demote last OWNER (edge case protection)",
+                "Allowed transitions:",
+                "  - RECRUITER → ADMIN (promotion)",
+                "  - ADMIN → RECRUITER (demotion)",
+                "  - OWNER stays OWNER (immutable for billing accountability)",
+                "Transaction-safe: updates CompanyMember + Company.members"
+            ]
+        },
+        {
+            "name": "8. Get Company Members",
+            "method": "GET",
+            "path": "/company/{{company1_id}}/members",
+            "description": "Any ACTIVE member can view all ACTIVE members of their company.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter2_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": null,
+            "queryParams": {},
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Company members retrieved",
+                    "data": [
+                        {
+                            "_id": "member_001",
+                            "userId": {
+                                "_id": "user_001_recruiter",
+                                "email": "recruiter1@hirestack.com",
+                                "firstName": "John",
+                                "lastName": "Doe"
+                            },
+                            "companyId": "company_001",
+                            "role": "OWNER",
+                            "status": "ACTIVE",
+                            "source": "CREATED",
+                            "approvedAt": "2026-04-17T10:00:00Z"
+                        },
+                        {
+                            "_id": "member_002",
+                            "userId": {
+                                "_id": "user_002_recruiter",
+                                "email": "recruiter2@hirestack.com",
+                                "firstName": "Jane",
+                                "lastName": "Smith"
+                            },
+                            "companyId": "company_001",
+                            "role": "ADMIN",
+                            "status": "ACTIVE",
+                            "source": "REQUEST",
+                            "approvedAt": "2026-04-17T10:20:00Z"
+                        }
+                    ]
+                }
+            },
+            "notes": [
+                "Any ACTIVE member can call this endpoint (no role restriction)",
+                "Returns only ACTIVE members (status=ACTIVE)",
+                "Populates user details (email, firstName, lastName)",
+                "Used for team management view"
+            ]
+        },
+        {
+            "name": "9. Delegate Billing Admin",
+            "method": "POST",
+            "path": "/company/{{company1_id}}/billing-admin",
+            "description": "OWNER only delegates billing admin permissions to an ACTIVE ADMIN. OWNER remains immutable, but billing responsibility can be delegated.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "adminId": "user_002_recruiter"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Billing admin delegated successfully",
+                    "data": {
+                        "_id": "company_001",
+                        "name": "TechCorp Solutions",
+                        "owner": "user_001_recruiter",
+                        "billingAdmin": "user_002_recruiter",
+                        "members": [
+                            {
+                                "userId": "user_001_recruiter",
+                                "role": "OWNER"
+                            },
+                            {
+                                "userId": "user_002_recruiter",
+                                "role": "ADMIN"
+                            }
+                        ]
+                    }
+                }
+            },
+            "notes": [
+                "Only OWNER can delegate billing",
+                "Target must be ACTIVE ADMIN (role=ADMIN)",
+                "Updates Company.billingAdmin field",
+                "OWNER always accountable but can delegate to reduce bottleneck",
+                "Used for billing, payment, and subscription management"
+            ]
+        },
+        {
+            "name": "10. Login",
+            "method": "POST",
+            "path": "/auth/login",
+            "description": "Authenticate user with email and password. Returns user data and JWT token.",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "email": "recruiter1@hirestack.com",
+                "password": "SecurePassword123"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Logged in successfully",
+                    "data": {
+                        "user": {
+                            "_id": "user_001_recruiter",
+                            "email": "recruiter1@hirestack.com",
+                            "role": "RECRUITER",
+                            "firstName": "John",
+                            "lastName": "Doe"
+                        },
+                        "token": "jwt_token_recruiter_1"
+                    }
+                }
+            }
+        },
+        {
+            "name": "11. Logout",
+            "method": "POST",
+            "path": "/auth/logout",
+            "description": "Logout user. Clears session/token.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": null,
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Logged out successfully",
+                    "data": null
+                }
+            }
+        },
+        {
+            "name": "12. Register Candidate",
+            "method": "POST",
+            "path": "/auth/register-candidate",
+            "description": "Register new candidate account. Creates user and candidate profile.",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "email": "candidate1@hirestack.com",
+                "password": "SecurePass123",
+                "firstName": "Alice",
+                "lastName": "Johnson"
+            },
+            "expectedResponse": {
+                "statusCode": 201,
+                "body": {
+                    "success": true,
+                    "message": "Candidate registered successfully",
+                    "data": {
+                        "user": {
+                            "_id": "user_004_candidate",
+                            "email": "candidate1@hirestack.com",
+                            "role": "CANDIDATE",
+                            "firstName": "Alice",
+                            "lastName": "Johnson"
+                        },
+                        "token": "jwt_token_candidate_1"
+                    }
+                }
+            }
+        },
+        {
+            "name": "13. Register Recruiter",
+            "method": "POST",
+            "path": "/auth/register-recruiter",
+            "description": "Register new recruiter account.",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "email": "recruiter4@hirestack.com",
+                "password": "SecurePass123",
+                "firstName": "Bob",
+                "lastName": "Wilson"
+            },
+            "expectedResponse": {
+                "statusCode": 201,
+                "body": {
+                    "success": true,
+                    "message": "Recruiter registered successfully",
+                    "data": {
+                        "user": {
+                            "_id": "user_005_recruiter",
+                            "email": "recruiter4@hirestack.com",
+                            "role": "RECRUITER"
+                        },
+                        "token": "jwt_token_recruiter_4"
+                    }
+                }
+            }
+        },
+        {
+            "name": "14. Get Pending Companies (Admin)",
+            "method": "GET",
+            "path": "/admin/companies/pending",
+            "description": "Admin retrieves all pending companies awaiting approval.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{admin_token}}"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Pending companies retrieved",
+                    "data": [
+                        {
+                            "_id": "company_002",
+                            "name": "StartupXYZ",
+                            "industry": "AI/ML",
+                            "owner": "user_002_recruiter",
+                            "status": "PENDING",
+                            "createdAt": "2026-04-20T10:00:00Z"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "15. Approve Company (Admin)",
+            "method": "POST",
+            "path": "/admin/companies/{{company2_id}}/approve",
+            "description": "Admin approves a pending company registration.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{admin_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": null,
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Company approved successfully",
+                    "data": {
+                        "_id": "company_002",
+                        "name": "StartupXYZ",
+                        "status": "APPROVED",
+                        "approvedAt": "2026-04-21T10:00:00Z"
+                    }
+                }
+            }
+        },
+        {
+            "name": "16. Reject Company (Admin)",
+            "method": "POST",
+            "path": "/admin/companies/{{company2_id}}/reject",
+            "description": "Admin rejects a pending company registration.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{admin_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "reason": "Incomplete documentation"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Company rejected successfully",
+                    "data": {
+                        "_id": "company_002",
+                        "name": "StartupXYZ",
+                        "status": "REJECTED",
+                        "rejectionReason": "Incomplete documentation"
+                    }
+                }
+            }
+        },
+        {
+            "name": "17. Upload Resume (Candidate)",
+            "method": "POST",
+            "path": "/candidate-profile/resume",
+            "description": "Upload resume file. Supports PDF, DOCX formats.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{candidate1_token}}"
+            },
+            "requestBody": {
+                "file": "resume.pdf"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Resume uploaded successfully",
+                    "data": {
+                        "resumeUrl": "https://cloudinary.com/resume_123.pdf",
+                        "uploadedAt": "2026-04-21T10:00:00Z"
+                    }
+                }
+            }
+        },
+        {
+            "name": "18. Update Candidate Basic Profile",
+            "method": "POST",
+            "path": "/candidate-profile/basic",
+            "description": "Update candidate basic info (title, summary, etc.)",
+            "auth": {
+                "type": "bearer",
+                "token": "{{candidate1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "title": "Full Stack Developer",
+                "summary": "Experienced MERN stack developer",
+                "location": "San Francisco, CA"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Profile updated successfully",
+                    "data": {
+                        "title": "Full Stack Developer",
+                        "summary": "Experienced MERN stack developer",
+                        "location": "San Francisco, CA"
+                    }
+                }
+            }
+        },
+        {
+            "name": "19. Upload Recruiter Profile Image",
+            "method": "POST",
+            "path": "/recruiter-profile/image",
+            "description": "Upload recruiter profile picture.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "requestBody": {
+                "file": "profile.jpg"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Profile image uploaded successfully",
+                    "data": {
+                        "profileImageUrl": "https://cloudinary.com/profile_123.jpg"
+                    }
+                }
+            }
+        },
+        {
+            "name": "20. Update Recruiter Personal Info",
+            "method": "POST",
+            "path": "/recruiter-profile/personal-info",
+            "description": "Update recruiter title, department, bio, phone.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "title": "Head of Recruitment",
+                "department": "HR",
+                "bio": "Experienced recruiter with 5+ years",
+                "phone": "1234567890"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Personal info updated successfully",
+                    "data": {
+                        "title": "Head of Recruitment",
+                        "department": "HR",
+                        "bio": "Experienced recruiter with 5+ years",
+                        "phone": "1234567890"
+                    }
+                }
+            }
+        },
+        {
+            "name": "21. Update Recruiter Social Links",
+            "method": "POST",
+            "path": "/recruiter-profile/social-links",
+            "description": "Update LinkedIn, Twitter, personal website.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "requestBody": {
+                "socialLinks": {
+                    "linkedin": "https://linkedin.com/in/johndoe",
+                    "twitter": "https://twitter.com/johndoe",
+                    "website": "https://johndoe.com"
+                }
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Social links updated successfully",
+                    "data": {
+                        "socialLinks": {
+                            "linkedin": "https://linkedin.com/in/johndoe",
+                            "twitter": "https://twitter.com/johndoe",
+                            "website": "https://johndoe.com"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "22. Get Recruiter Profile",
+            "method": "GET",
+            "path": "/recruiter-profile",
+            "description": "Retrieve recruiter's own profile details.",
+            "auth": {
+                "type": "bearer",
+                "token": "{{recruiter1_token}}"
+            },
+            "expectedResponse": {
+                "statusCode": 200,
+                "body": {
+                    "success": true,
+                    "message": "Profile retrieved successfully",
+                    "data": {
+                        "_id": "profile_001",
+                        "userId": "user_001_recruiter",
+                        "title": "Head of Recruitment",
+                        "department": "HR",
+                        "bio": "Experienced recruiter with 5+ years",
+                        "profileImageUrl": "https://cloudinary.com/profile_123.jpg",
+                        "socialLinks": {
+                            "linkedin": "https://linkedin.com/in/johndoe",
+                            "twitter": "https://twitter.com/johndoe"
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "errorScenarios": [
+        {
+            "name": "Error: Unauthorized Access",
+            "description": "User not authenticated or token invalid",
+            "expectedResponse": {
+                "statusCode": 401,
+                "body": {
+                    "success": false,
+                    "message": "Unauthorized"
+                }
+            }
+        },
+        {
+            "name": "Error: Forbidden - Insufficient Permissions",
+            "description": "User authenticated but lacks required role",
+            "endpoint": "Approve Member",
+            "scenario": "Non-OWNER/ADMIN tries to approve",
+            "expectedResponse": {
+                "statusCode": 403,
+                "body": {
+                    "success": false,
+                    "message": "Forbidden: Only OWNER or ADMIN can approve members"
+                }
+            }
+        },
+        {
+            "name": "Error: Cannot Remove Last Owner",
+            "description": "Attempting to remove or demote the last OWNER",
+            "endpoint": "Remove Member or Change Role",
+            "expectedResponse": {
+                "statusCode": 409,
+                "body": {
+                    "success": false,
+                    "message": "Cannot remove or demote the last OWNER of the company"
+                }
+            }
+        },
+        {
+            "name": "Error: Duplicate Membership",
+            "description": "User already has an ACTIVE or PENDING membership",
+            "endpoint": "Join Company or Invite",
+            "expectedResponse": {
+                "statusCode": 409,
+                "body": {
+                    "success": false,
+                    "message": "User already has an active or pending membership"
+                }
+            }
+        },
+        {
+            "name": "Error: Recruiter Can Only Create One Company",
+            "description": "Recruiter attempts to create second company",
+            "endpoint": "Create Company",
+            "expectedResponse": {
+                "statusCode": 409,
+                "body": {
+                    "success": false,
+                    "message": "Each recruiter can only create one company"
+                }
+            }
+        },
+        {
+            "name": "Error: Invalid Member Status Transition",
+            "description": "Attempting invalid status transition",
+            "endpoint": "Approve non-PENDING member",
+            "expectedResponse": {
+                "statusCode": 400,
+                "body": {
+                    "success": false,
+                    "message": "Cannot approve member that is not in PENDING status"
+                }
+            }
+        }
+    ],
+    "workflowExamples": [
+        {
+            "name": "Workflow 1: Company Creation & Invitation",
+            "steps": [
+                "1. Recruiter1 creates company (OWNER role assigned)",
+                "2. Recruiter1 invites Recruiter2 (creates PENDING membership)",
+                "3. Recruiter1 approves invitation (PENDING → ACTIVE)",
+                "4. Recruiter1 promotes Recruiter2 to ADMIN",
+                "5. Recruiter1 delegates billing to Recruiter2",
+                "6. Recruiter1 fetches members list"
+            ]
+        },
+        {
+            "name": "Workflow 2: Company Join & Approval",
+            "steps": [
+                "1. Company exists with OWNER Recruiter1",
+                "2. Recruiter2 requests to join (creates PENDING membership)",
+                "3. Recruiter1 reviews and approves (PENDING → ACTIVE)",
+                "4. Recruiter2 can now see company members"
+            ]
+        },
+        {
+            "name": "Workflow 3: Member Rejection",
+            "steps": [
+                "1. Recruiter1 invites Recruiter3",
+                "2. Recruiter1 rejects invitation with reason",
+                "3. Rejection recorded with audit trail",
+                "4. Recruiter3 can reapply later"
+            ]
+        },
+        {
+            "name": "Workflow 4: Member Removal",
+            "steps": [
+                "1. Recruiter2 is ACTIVE member",
+                "2. Recruiter1 removes Recruiter2 with reason",
+                "3. Status changes to REMOVED",
+                "4. Recruiter2 removed from Company.members",
+                "5. Audit trail preserved for compliance"
+            ]
+        }
+    ],
+    "authorizationMatrix": {
+        "verifyCompanyMember": {
+            "description": "User must be ACTIVE member of company",
+            "appliedTo": [
+                "Approve Member",
+                "Reject Member",
+                "Remove Member",
+                "Change Role",
+                "Get Members",
+                "Delegate Billing"
+            ]
+        },
+        "verifyCompanyOwner": {
+            "description": "User must be OWNER role",
+            "appliedTo": ["Change Role", "Delegate Billing"]
+        },
+        "verifyCompanyOwnerOrAdmin": {
+            "description": "User must be OWNER or ADMIN role",
+            "appliedTo": [
+                "Invite Recruiter",
+                "Approve Member",
+                "Reject Member",
+                "Remove Member"
+            ]
+        }
+    },
+    "denormalization": {
+        "description": "Performance optimization via strategic denormalization",
+        "strategy": [
+            {
+                "field": "Company.members",
+                "purpose": "Fast query of active members without join",
+                "syncedWith": "CompanyMember table (add/remove on ACTIVE/REMOVED status)",
+                "tradeoff": "Extra storage, but eliminates expensive joins"
+            },
+            {
+                "field": "RecruiterProfile.currentCompanyId",
+                "purpose": "Quick lookup: which company is recruiter in?",
+                "syncedWith": "CompanyMember approval/removal",
+                "tradeoff": "Requires transaction consistency"
+            }
+        ]
+    },
+    "auditTrail": {
+        "description": "Complete tracking of membership changes",
+        "fields": [
+            {
+                "name": "invitedBy + invitedAt",
+                "tracks": "Who invited and when (for source=INVITE)"
+            },
+            {
+                "name": "approvedBy + approvedAt",
+                "tracks": "Who approved and when"
+            },
+            {
+                "name": "rejectedBy + rejectionReason + rejectedAt",
+                "tracks": "Who rejected, why, and when"
+            },
+            {
+                "name": "removedBy + removalReason + removedAt",
+                "tracks": "Who removed, why, and when"
+            },
+            {
+                "name": "createdAt",
+                "tracks": "When membership record created (original join/invite time)"
+            }
+        ]
+    },
+    "transactionSafety": {
+        "description": "All state-changing operations are transaction-safe",
+        "operations": [
+            {
+                "name": "approveMemberService",
+                "updates": [
+                    "CompanyMember: PENDING → ACTIVE",
+                    "Company.members: add to array",
+                    "RecruiterProfile.currentCompanyId: set company ID"
+                ],
+                "rollback": "All changes reverted if any fails"
+            },
+            {
+                "name": "removeMemberService",
+                "updates": [
+                    "CompanyMember: ACTIVE → REMOVED",
+                    "Company.members: remove from array",
+                    "RecruiterProfile.currentCompanyId: clear"
+                ],
+                "rollback": "All changes reverted if any fails"
+            }
+        ]
+    }
+}

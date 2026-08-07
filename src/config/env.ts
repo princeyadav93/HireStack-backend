@@ -1,11 +1,14 @@
 import dotenv from 'dotenv';
+import { ApiError } from '../utils/ApiError';
+import { HTTP_STATUS } from '../constants';
 
 dotenv.config({ quiet: true });
 
 function getEnv(key: string, defaultvalue?: string): string {
     const value = process.env[key] || defaultvalue;
     if (!value) {
-        throw new Error(
+        throw new ApiError(
+            HTTP_STATUS.BAD_REQUEST,
             `Environment variable ${key} is not set and no default value provided.`,
         );
     }
@@ -25,7 +28,10 @@ const requiredEnvVars = [
 
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
-        throw new Error(`❌ Required environment variable missing: ${envVar}`);
+        throw new ApiError(
+            HTTP_STATUS.BAD_REQUEST,
+            `Required environment variable missing: ${envVar}`,
+        );
     }
 }
 
