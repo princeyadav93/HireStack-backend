@@ -18,6 +18,8 @@ import recruiterProfileRouter from './routes/recruiterProfile.route';
 import adminRouter from './routes/platformAdmin.route';
 import companyOwnerRouter from './routes/companyOwner.route';
 import companyMemberRouter from './routes/companyMember.route';
+import jobRouter from './routes/job.route';
+import applicationRouter from './routes/application.route';
 
 const app: Application = express();
 
@@ -92,6 +94,10 @@ app.use('/admin', adminRouter);
 // routes such as `GET /company/members`.
 app.use('/company', companyMemberRouter);
 app.use('/company', companyOwnerRouter);
+
+// Jobs and applications
+app.use('/jobs', jobRouter);
+app.use('/applications', applicationRouter);
 
 // 404 handler
 app.use(notFoundHandler);
