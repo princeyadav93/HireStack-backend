@@ -20,11 +20,13 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v7
               with:
                   node-version: 22
+                  # setup-node v6 limited automatic caching to npm only, so this
+                  # must stay explicit.
                   cache: npm
 
             # `npm ci` (not `npm install`) — installs exactly what the lockfile
