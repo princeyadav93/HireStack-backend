@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import { randomUUID } from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { IUser } from '../types/user.types';
@@ -82,7 +83,13 @@ userSchema.methods.refreshTokenGenerate = function (): string {
     return jwt.sign(
         { userId: this._id, type: TOKEN_TYPE.REFRESH },
         ENV.REFRESH_TOKEN_SECRET,
-        { expiresIn: ENV.REFRESH_TOKEN_EXPIRY as unknown as number },
+        {
+            expiresIn: ENV.REFRESH_TOKEN_EXPIRY as unknown as number,
+            // `iat` only has second resolution, so without a unique claim two
+            // tokens minted in the same second are byte-identical and rotation
+            // hands back the very token it was meant to replace.
+            jwtid: randomUUID(),
+        },
     );
 };
 

@@ -21,6 +21,7 @@ For setup and full API details see [README.md](./README.md).
 | **Jobs**              | Full lifecycle `DRAFT → PUBLISHED → CLOSED`, soft delete, company board with drafts, and a public filtered job board.   |
 | **Applications**      | Apply once per job, candidate's own list, recruiter pipeline per job, status transitions with a full audit trail.       |
 | **Security**          | Rate limiting, helmet, CORS allowlist, Zod validation on every body, centralised error handling, tenant isolation.      |
+| **Tests**             | 96 tests — Vitest, supertest, in-memory MongoDB replica set. Unit + integration, run in CI on every push.               |
 | **Ops**               | Env validation on boot, admin seed script, GitHub Actions CI, protected `production` / `QA` / `dev` branches.           |
 
 **The parts worth pointing at in an interview:**
@@ -47,47 +48,34 @@ For setup and full API details see [README.md](./README.md).
 
 In the order I'd do it.
 
-### 1. Tests — the biggest gap
-
-There is no test suite. `npm test --if-present` is a no-op, so CI currently proves only
-that the code **compiles**, not that it works. Nothing else on this list is worth much
-until this exists.
-
-Start with the logic that's cheap to test and expensive to get wrong:
-
-- Application status transitions (the table above)
-- Pagination clamping, regex escaping
-- Error middleware — that a Zod failure becomes a 400 and an unknown error becomes a 500
-- Auth middleware — refresh token rejected, stale `tokenVersion` rejected
-
-Then integration tests against an in-memory MongoDB for the flows that carry real risk:
-login, apply-to-job, and cross-tenant access returning 404.
-
-### 2. Password reset and email verification
+### 1. Password reset and email verification
 
 Right now anyone can register with **someone else's email address**, and a user who
 forgets their password has no way back in. Needs: an email provider, a hashed
 single-use token with a short expiry, and `/auth/forgot-password`,
 `/auth/reset-password`, `/auth/verify-email`.
 
-### 3. Replace the API collection with real docs
-
-`API_TEST_COLLECTION.json` is stale and actively misleading — it documents endpoints
-that don't exist, points at the wrong base URL, and uses bearer tokens when the API uses
-cookies. Replace it with an OpenAPI spec generated from the Zod DTOs so it can't drift
-again.
-
-### 4. Two small production blockers
+### 2. Two small production blockers
 
 - **`app.set('trust proxy', 1)`** in `src/app.ts`. Without it, rate limiting behind a
   proxy sees the proxy's IP for every request and throttles all users as one.
 - **Structured logging.** Morgan's `dev` format is unreadable in aggregation. Add
   request IDs and JSON output so production errors are traceable.
 
-### 5. Company logo upload
+### 3. Company logo upload
 
 The `Company` model already has a `logo` field with no endpoint filling it. Small job,
 and the job board looks unfinished without it.
+
+### 4. Replace the API collection with real docs
+
+`API_TEST_COLLECTION.json` is stale and actively misleading — it documents endpoints
+that don't exist, points at the wrong base URL, and uses bearer tokens when the API uses
+cookies. Replace it with an OpenAPI spec generated from the Zod DTOs so it can't drift
+again.
+
+Deliberately last: steps 1 and 3 both add endpoints, so generating the spec before them
+means regenerating it after.
 
 ---
 
@@ -129,8 +117,8 @@ Small things, but they'll bite later if left.
 
 | Item                                                                                             | Impact |
 | ------------------------------------------------------------------------------------------------ | ------ |
-| No tests anywhere                                                                                  | High   |
 | No password reset or email verification                                                            | High   |
+| Test coverage is auth, applications and tenant isolation only — companies and profiles are untested | Medium |
 | `REFRESH_TOKEN_SECRET` silently falls back to `JWT_SECRET`                                         | Medium |
 | `app.set('trust proxy')` not configured — rate limiting misbehaves behind a proxy                  | Medium |
 | `API_TEST_COLLECTION.json` documents endpoints that no longer exist                                | Medium |
@@ -147,14 +135,16 @@ Small things, but they'll bite later if left.
 ## Suggested order
 
 ```
-1. Tests                        ← unblocks confident change everywhere else
-2. Password reset + email verify ← the last thing missing before real users
-3. OpenAPI docs                  ← needed before the frontend starts
-4. trust proxy + logging         ← ~1 hour, blocks deployment
-5. Company logo upload           ← small, visible win
-6. Frontend                      ← the API surface is ready for it
+✓  Tests                         ← 108 tests, running in CI
+✓  Refresh-token hashing         ← SHA-256 + jti; rotation now actually revokes
+1. Password reset + email verify ← the last thing missing before real users
+2. trust proxy + logging         ← ~1 hour, blocks deployment
+3. Company logo upload           ← small, visible win
+4. OpenAPI docs                  ← last, so the spec captures the finished surface
+5. Frontend                      ← the API surface is ready for it
 ```
 
-The backend is in good shape to start a frontend against. Jobs and applications — the
-core loop of a hiring product — are complete and enforced end to end. The honest blocker
-is that none of it is covered by tests, so every future change is a manual re-check.
+The backend is in good shape to start a frontend against. Jobs and applications — the core
+loop of a hiring product — are complete, enforced end to end, and now covered by tests that
+run on every push. The suite has already paid for itself once: it caught a refresh-token
+bug that had been invisible to manual testing.

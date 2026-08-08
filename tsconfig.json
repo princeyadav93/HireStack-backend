@@ -14,5 +14,9 @@
         "resolveJsonModule": true,
         "declaration": true,
         "sourceMap": true
-    }
+    },
+    // Without this, `tsc` also picks up tests/ — which sits outside rootDir and
+    // has no business being compiled into dist/. Tests are typechecked
+    // separately by tsconfig.test.json.
+    "include": ["src/**/*"]
 }
