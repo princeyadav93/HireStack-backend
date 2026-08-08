@@ -87,12 +87,33 @@ npm run seed:admin -- --name "Prince" --email admin@hirestack.dev --password "a-
 | `CORS_ORIGIN`            | `http://localhost:3000` | **Comma-separated allowlist.** No wildcard — see below.    |
 | `REFRESH_TOKEN_SECRET`   | falls back to `JWT_SECRET` | Set it to something different in production.            |
 | `REFRESH_TOKEN_EXPIRY`   | `10d`                   |                                                            |
+| `APP_URL`                | `http://localhost:5173` | **Frontend** base URL — where email links point            |
+| `EMAIL_FROM`             | `HireStack <no-reply@hirestack.local>` |                                             |
+| `SMTP_HOST`              | *(unset)*               | Blank ⇒ emails print to the console instead of sending     |
+| `SMTP_PORT`              | `587`                   |                                                            |
+| `SMTP_USER` / `SMTP_PASS`| *(unset)*               | Omit both for relays that take no credentials              |
+| `SMTP_SECURE`            | `false`                 | `true` only for implicit TLS on port 465                   |
 
 Generate a secret with:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+### Email
+
+Verification and password-reset links are sent over **SMTP**, not a provider SDK, so
+picking a provider is configuration rather than a code change — Resend, SendGrid,
+Mailgun, SES, Mailtrap and Gmail all expose SMTP credentials. `.env.example` lists the
+hosts.
+
+Leave `SMTP_HOST` blank and nothing is sent: the message is printed to the server
+console, link included. That is enough to complete a full password reset locally
+without signing up for anything.
+
+`APP_URL` is the **frontend**, not this API. A link lands on
+`{APP_URL}/reset-password?token=…`, and the page there posts the token back to
+`POST /auth/reset-password`.
 
 ---
 
@@ -198,11 +219,23 @@ Auth is **httpOnly cookies**, not `Authorization` headers — send credentialed 
 
 ### Auth — `/auth`
 
-| Method | Path             | Access | Notes                                    |
-| ------ | ---------------- | ------ | ---------------------------------------- |
-| POST   | `/login`         | Public | Rate limited. Sets `token` cookie.       |
-| POST   | `/logout`        | Auth   | Revokes **all** existing tokens          |
-| POST   | `/refresh-token` | Public | Rotates the refresh token                |
+| Method | Path                    | Access | Notes                                                          |
+| ------ | ----------------------- | ------ | -------------------------------------------------------------- |
+| POST   | `/login`                | Public | Rate limited. Sets `token` cookie.                             |
+| POST   | `/logout`               | Auth   | Revokes **all** existing tokens                                |
+| POST   | `/refresh-token`        | Public | Rotates the refresh token                                      |
+| POST   | `/forgot-password`      | Public | Always 200, same message — never says whether the email exists |
+| POST   | `/reset-password`       | Public | `{ token, password }`. Signs every session out.                |
+| POST   | `/verify-email`         | Public | `{ token }`                                                    |
+| POST   | `/verify-email/resend`  | Auth   | Auth'd on purpose — see below                                  |
+
+Tokens are 32 random bytes, stored only as a SHA-256 hash, single-use, and scoped to
+one purpose: a reset token cannot verify an email or the reverse. Reset links last 1
+hour, verification links 24 hours, and requesting a new one retires the previous.
+
+`/verify-email/resend` requires a login rather than taking an email address, because an
+endpoint that mails any address you name is both a spam relay and a way to test which
+addresses have accounts.
 
 ### Candidate — `/candidate`
 
@@ -308,7 +341,11 @@ Auth is **httpOnly cookies**, not `Authorization` headers — send credentialed 
 | Token confusion        | Access and refresh tokens carry a `type` claim; an endpoint expecting one rejects the other outright.         |
 | Logout / revocation    | Logout increments `tokenVersion`, retiring **every** token issued before it. Checked on each request.         |
 | Login enumeration      | Wrong email and wrong password return the identical 401, and a dummy bcrypt compare keeps timing flat.        |
-| Brute force            | Login: 10 attempts / 15 min (successes don't count). Registration: 20 / hour. Global ceiling: 300 / 15 min.   |
+| Reset enumeration      | `/forgot-password` returns one fixed 200 for every address, and mail failures are swallowed so they can't leak it either. |
+| Reset link safety      | 32 random bytes, stored SHA-256 hashed, single-use via an atomic `findOneAndDelete`, expiring in 1 hour.      |
+| Reset ⇒ full logout    | A reset bumps `tokenVersion` and drops the stored refresh token, so an attacker's live session dies with it.  |
+| Email ownership        | Registration only claims an address; `isEmailVerified` flips solely on a link clicked in that inbox.          |
+| Brute force            | Login: 10 attempts / 15 min (successes don't count). Registration: 20 / hour. Mail-sending endpoints: 5 / hour. Global ceiling: 300 / 15 min. |
 | Cross-tenant access    | Company scope comes from the DB membership record, never the URL. Foreign records read as 404.                |
 | Privilege escalation   | `POST /admin/register` requires an existing admin. The first is seeded from the CLI.                          |
 | Injection via search   | User search terms are regex-escaped before reaching a `$regex` query.                                         |

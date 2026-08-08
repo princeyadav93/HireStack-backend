@@ -6,6 +6,7 @@ import { ENV } from '../config/env';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { IUserSafe } from '../types/user.types';
+import { sendVerificationEmail } from './auth.service';
 
 /**
  * Create a platform admin user (no profile document — admins have no profile).
@@ -36,6 +37,12 @@ export const registerAdminService = async (
             role: 'admin',
         },
     ]);
+
+    // An existing admin vouched for this address, but nobody has proved they
+    // can read it — so it starts unverified like any other account.
+    await sendVerificationEmail(userDocs[0]).catch((error) =>
+        console.error('[auth] verification email failed', error),
+    );
 
     const { password: _, ...userSafe } = userDocs[0].toObject();
 

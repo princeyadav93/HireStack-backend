@@ -36,6 +36,18 @@ export enum WorkMode {
     HYBRID = 'HYBRID',
 }
 
+/**
+ * What a one-time account token is for.
+ *
+ * Every lookup is keyed on this alongside the hash, so a password-reset token
+ * cannot be redeemed to verify an email or the other way round — the same
+ * reasoning as the `type` claim on access and refresh tokens.
+ */
+export enum VerificationTokenType {
+    EMAIL_VERIFICATION = 'EMAIL_VERIFICATION',
+    PASSWORD_RESET = 'PASSWORD_RESET',
+}
+
 export enum ApplicationStatus {
     APPLIED = 'APPLIED',
     SHORTLISTED = 'SHORTLISTED',

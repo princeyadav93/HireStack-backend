@@ -74,6 +74,9 @@ const run = async (): Promise<void> => {
             email: normalisedEmail,
             password: hashedPassword,
             role: 'admin',
+            // Created by someone who already holds database credentials, and
+            // there is no inbox to mail a link to from a one-shot script.
+            isEmailVerified: true,
         });
 
         console.log(`✅ Platform admin created: ${admin.email} (${admin._id})`);
