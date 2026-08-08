@@ -7,8 +7,7 @@ profile, browse published jobs, and apply.
 Built with **TypeScript + Express 5 + MongoDB (Mongoose 9)**, with cookie-based JWT
 auth, Zod validation, and strict per-company data isolation.
 
-> **Status:** actively built, not yet production-deployed. See
-> [ROADMAP.md](./ROADMAP.md) for what's done, what's next, and what's missing.
+> **Status:** actively built, not yet production-deployed.
 
 ---
 
