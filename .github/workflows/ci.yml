@@ -34,13 +34,21 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
+            # mongodb-memory-server downloads a real mongod on first use. Without
+            # this the binary is fetched again on every run.
+            - name: Cache MongoDB binaries
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/mongodb-binaries
+                  key: mongodb-binaries-${{ runner.os }}
+
+            # Covers src *and* tests. `npx tsc --noEmit` alone reads
+            # tsconfig.json, which is scoped to src so that dist/ stays clean.
             - name: Typecheck
-              run: npx tsc --noEmit
+              run: npm run typecheck
 
             - name: Build
               run: npm run build
 
-            # No test script yet; --if-present makes this a no-op until there is
-            # one, so adding tests later needs no change here.
             - name: Test
-              run: npm test --if-present
+              run: npm test

@@ -25,10 +25,22 @@ const rejectWithApiError: Options['handler'] = (_req, _res, next) => {
     );
 };
 
+/**
+ * The whole test suite shares one process and one client IP, so a full run
+ * burns through these budgets and unrelated assertions start failing as 429s.
+ *
+ * Both variables must agree before limiting is skipped — NODE_ENV=test
+ * reaching production by accident is not enough to disable it on its own.
+ */
+const rateLimitingDisabled = () =>
+    process.env.NODE_ENV === 'test' &&
+    process.env.DISABLE_RATE_LIMIT === 'true';
+
 const baseOptions = {
     standardHeaders: 'draft-7' as const,
     legacyHeaders: false,
     handler: rejectWithApiError,
+    skip: rateLimitingDisabled,
 };
 
 /**
