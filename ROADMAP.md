@@ -90,6 +90,14 @@ regenerating it after.
 - Withdraw an application
 - Bulk pipeline actions (reject several candidates at once)
 
+**Makes it production-shaped**
+
+- A background job queue for email (BullMQ + Redis). Sending happens inside the request
+  today, so a provider outage becomes a failed registration instead of a retry. This is
+  the single biggest gap between what's here and how this is done in production —
+  `sendQuietly` in `auth.service.ts` is the one place it would slot in.
+- Bounce and complaint webhooks feeding a suppression list
+
 **Makes it feel like a real platform**
 
 - Interview scheduling with calendar invites
@@ -124,6 +132,8 @@ Small things, but they'll bite later if left.
 | Membership recorded twice — in `Company.members` **and** the `CompanyMember` collection            | Medium |
 | No account deletion or data export (GDPR)                                                          | Medium |
 | Rate limit counters are in-memory — per-process, reset on restart, wrong for >1 instance            | Medium |
+| Email is sent inline in the request — no queue, no retry, and a slow provider slows registration    | Medium |
+| No bounce or complaint handling — repeatedly mailing a dead address burns sending reputation        | Low    |
 | Old Cloudinary files aren't cleaned up when a résumé or image is replaced                          | Low    |
 | Several exported types and helpers are unused                                                      | Low    |
 | No `.gitattributes` — Git warns about CRLF on every commit on Windows                              | Low    |
