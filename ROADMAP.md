@@ -128,7 +128,7 @@ Small things, but they'll bite later if left.
 | Old Cloudinary files aren't cleaned up when a résumé or image is replaced                          | Low    |
 | Several exported types and helpers are unused                                                      | Low    |
 | No `.gitattributes` — Git warns about CRLF on every commit on Windows                              | Low    |
-| CI pins Node 22 while local development is on Node 25                                              | Low    |
+| Local Node must be upgraded to 24 LTS — 25 went end-of-life in June 2026                           | Low    |
 
 ---
 
