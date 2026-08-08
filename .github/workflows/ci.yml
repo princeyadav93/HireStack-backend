@@ -1,0 +1,54 @@
+name: CI
+
+# Runs on every push to a long-lived branch, and on every PR into QA or
+# production — so a broken change is caught before it can be merged.
+on:
+    push:
+        branches: [dev, QA, production]
+    pull_request:
+        branches: [QA, production]
+
+# A new push to the same branch cancels the run already in flight; only the
+# latest commit's result is worth waiting for.
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        name: Typecheck and build
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v7
+
+            - uses: actions/setup-node@v7
+              with:
+                  node-version: 22
+                  # setup-node v6 limited automatic caching to npm only, so this
+                  # must stay explicit.
+                  cache: npm
+
+            # `npm ci` (not `npm install`) — installs exactly what the lockfile
+            # pins and fails if package.json and the lockfile have drifted apart.
+            - name: Install dependencies
+              run: npm ci
+
+            # mongodb-memory-server downloads a real mongod on first use. Without
+            # this the binary is fetched again on every run.
+            - name: Cache MongoDB binaries
+              uses: actions/cache@v4
+              with:
+                  path: ~/.cache/mongodb-binaries
+                  key: mongodb-binaries-${{ runner.os }}
+
+            # Covers src *and* tests. `npx tsc --noEmit` alone reads
+            # tsconfig.json, which is scoped to src so that dist/ stays clean.
+            - name: Typecheck
+              run: npm run typecheck
+
+            - name: Build
+              run: npm run build
+
+            - name: Test
+              run: npm test
