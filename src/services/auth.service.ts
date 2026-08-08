@@ -6,6 +6,18 @@ import { ENV } from '../config/env';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { hashToken, tokenMatchesHash } from '../utils/hashToken';
+import { VerificationTokenType } from '../constants/enums';
+import {
+    consumeToken,
+    INVALID_TOKEN,
+    issueToken,
+} from './verificationToken.service';
+import { OutgoingEmail, sendMail } from './email.service';
+import {
+    passwordChangedEmail,
+    passwordResetEmail,
+    verificationEmail,
+} from '../utils/emailTemplates';
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -35,6 +47,25 @@ const generateAndStoreTokens = async (
     );
 
     return { accessToken, refreshToken };
+};
+
+/**
+ * Send without letting a mail failure reach the caller.
+ *
+ * On the account endpoints the response is deliberately identical whether or
+ * not an account exists, and a provider outage must not break that: a 500 for
+ * real addresses and a 200 for made-up ones is an enumeration oracle built out
+ * of error handling. The send is still awaited so behaviour stays deterministic
+ * under test.
+ */
+const sendQuietly = async (email: OutgoingEmail): Promise<void> => {
+    try {
+        await sendMail(email);
+    } catch (error) {
+        // Worth alerting on — every failure here is a user who asked for a link
+        // and was told one was coming.
+        console.error(`[email] failed to send "${email.subject}"`, error);
+    }
 };
 
 // ─── Services ────────────────────────────────────────────────
@@ -125,4 +156,114 @@ export const refreshTokenService = async (
     const { accessToken, refreshToken } = await generateAndStoreTokens(user);
 
     return { accessToken, refreshToken };
+};
+
+// ─── Email verification ──────────────────────────────────────
+
+/**
+ * Issue a verification link and email it. Exported so registration can call it
+ * for a user it has just created.
+ */
+export const sendVerificationEmail = async (user: IUser): Promise<void> => {
+    const token = await issueToken(
+        user._id,
+        VerificationTokenType.EMAIL_VERIFICATION,
+    );
+
+    await sendQuietly(verificationEmail(user.email, user.name, token));
+};
+
+export const verifyEmailService = async (token: string): Promise<void> => {
+    const userId = await consumeToken(
+        token,
+        VerificationTokenType.EMAIL_VERIFICATION,
+    );
+
+    const user = await User.findByIdAndUpdate(userId, {
+        $set: { isEmailVerified: true },
+    });
+
+    // The token was valid but the account is gone. Same message as a bad token:
+    // the caller can do nothing useful with the distinction.
+    if (!user) {
+        throw new ApiError(HTTP_STATUS.BAD_REQUEST, INVALID_TOKEN);
+    }
+};
+
+export const resendVerificationEmailService = async (
+    user: IUser,
+): Promise<void> => {
+    // Already verified: nothing to send, and no error either. Making this
+    // idempotent means a double-clicked button is harmless.
+    if (user.isEmailVerified) return;
+
+    await sendVerificationEmail(user);
+};
+
+// ─── Password reset ──────────────────────────────────────────
+
+/**
+ * Start a reset.
+ *
+ * Returns the same way for a known and an unknown address — the controller
+ * sends one fixed response — because a difference here tells an attacker which
+ * of a list of emails hold accounts.
+ */
+export const forgotPasswordService = async (email: string): Promise<void> => {
+    const user = await User.findOne({ email });
+
+    if (!user) return;
+
+    const token = await issueToken(
+        user._id,
+        VerificationTokenType.PASSWORD_RESET,
+    );
+
+    await sendQuietly(passwordResetEmail(user.email, user.name, token));
+};
+
+/**
+ * Finish a reset: set the new password and end every existing session.
+ *
+ * Signing the other sessions out is the point of the feature, not a nicety. A
+ * reset is what someone does when they think their account is compromised, and
+ * leaving the attacker's tokens alive would make it theatre.
+ */
+export const resetPasswordService = async (
+    token: string,
+    newPassword: string,
+): Promise<void> => {
+    const userId = await consumeToken(
+        token,
+        VerificationTokenType.PASSWORD_RESET,
+    );
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new ApiError(HTTP_STATUS.BAD_REQUEST, INVALID_TOKEN);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, ENV.SALTROUNDS);
+
+    await User.findByIdAndUpdate(
+        userId,
+        {
+            $set: {
+                password: hashedPassword,
+                // Clicking a link sent to that inbox proves control of it just
+                // as well as the verification flow does.
+                isEmailVerified: true,
+            },
+            // Drops the stored refresh token so it can no longer be rotated,
+            // and retires every access token already issued.
+            $unset: { refreshToken: '' },
+            $inc: { tokenVersion: 1 },
+        },
+        { runValidators: true },
+    );
+
+    // Not a courtesy: this is how someone finds out their account was taken
+    // over by a person who could read their email.
+    await sendQuietly(passwordChangedEmail(user.email, user.name));
 };

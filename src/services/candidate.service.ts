@@ -7,6 +7,7 @@ import { ENV } from '../config/env';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { createCandidateProfile } from '../utils/profileHelper';
+import { sendVerificationEmail } from './auth.service';
 import mongoose from 'mongoose';
 import { IUserSafe } from '../types/user.types';
 
@@ -47,6 +48,14 @@ export const registerCandidateService = async (
 
         await session.commitTransaction();
         session.endSession();
+
+        // After the commit, and its failure is swallowed: the token lives in
+        // another collection, so it has no business inside this transaction,
+        // and a mail outage must not undo an account that was created
+        // correctly. An unverified user can ask for another link.
+        await sendVerificationEmail(user).catch((error) =>
+            console.error('[auth] verification email failed', error),
+        );
 
         const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {
             expiresIn: '1d',

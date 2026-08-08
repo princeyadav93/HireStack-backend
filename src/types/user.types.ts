@@ -6,6 +6,8 @@ export interface IUser extends Document {
     email: string;
     password: string;
     role: 'candidate' | 'recruiter' | 'admin';
+    /** False until a link sent to that address has been clicked. */
+    isEmailVerified: boolean;
     refreshToken?: string; // hashed, optional (null when logged out)
     // Bumped on logout so already-issued access tokens stop being accepted.
     tokenVersion: number;
@@ -22,6 +24,7 @@ export interface IUserSafe {
     name: string;
     email: string;
     role: 'candidate' | 'recruiter' | 'admin';
+    isEmailVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
