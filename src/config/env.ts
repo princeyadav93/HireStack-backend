@@ -35,6 +35,12 @@ for (const envVar of requiredEnvVars) {
     }
 }
 
+// Optional: absent means "feature off", so these must not go through getEnv,
+// which treats an empty value as a fatal misconfiguration.
+function optionalEnv(key: string): string {
+    return process.env[key]?.trim() ?? '';
+}
+
 export const ENV = {
     PORT: getEnv('PORT', '3000'),
     MONGODB_URI: getEnv('MONGODB_URI'),
@@ -47,4 +53,23 @@ export const ENV = {
     CLOUDINARY_API_SECRET: getEnv('CLOUDINARY_API_SECRET'),
     NODE_ENV: getEnv('NODE_ENV', 'development'),
     SALTROUNDS: parseInt(getEnv('SALTROUNDS')),
+
+    // ─── Email ────────────────────────────────────────────────
+    // Where the links in emails point: the frontend that will call this API,
+    // not the API itself. A reset link has to open a page with a password
+    // form on it.
+    APP_URL: getEnv('APP_URL', 'http://localhost:5173'),
+    EMAIL_FROM: getEnv('EMAIL_FROM', 'HireStack <no-reply@hirestack.local>'),
+
+    // SMTP is the common denominator — Resend, SendGrid, Mailgun, SES, Gmail
+    // and Mailtrap all expose it, so choosing a provider is configuration
+    // rather than a code change. Leave SMTP_HOST unset and mail is written to
+    // the console instead, which is enough to develop the whole flow.
+    SMTP_HOST: optionalEnv('SMTP_HOST'),
+    SMTP_PORT: parseInt(optionalEnv('SMTP_PORT') || '587'),
+    SMTP_USER: optionalEnv('SMTP_USER'),
+    SMTP_PASS: optionalEnv('SMTP_PASS'),
+    // Implicit TLS (port 465). Port 587 upgrades with STARTTLS instead, which
+    // nodemailer negotiates on its own, so this stays false there.
+    SMTP_SECURE: optionalEnv('SMTP_SECURE') === 'true',
 };

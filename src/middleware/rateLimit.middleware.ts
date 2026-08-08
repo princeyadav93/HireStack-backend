@@ -65,6 +65,20 @@ export const registerLimiter = rateLimit({
 });
 
 /**
+ * The endpoints that put a message in someone's inbox.
+ *
+ * Tighter than the others because abuse here costs real money and lands on a
+ * third party: an unthrottled forgot-password endpoint is a way to have this
+ * server mail-bomb an address on the attacker's behalf, and the bounces are
+ * charged to our sending reputation, not theirs.
+ */
+export const emailLimiter = rateLimit({
+    ...baseOptions,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    limit: 5,
+});
+
+/**
  * Catch-all ceiling for everything else.
  */
 export const globalLimiter = rateLimit({

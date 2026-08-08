@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { afterAll, afterEach, beforeAll } from 'vitest';
+import { testInbox } from '../../src/services/email.service';
 
 // Importing the models registers their schemas — and their indexes — before
 // anything queries them.
@@ -10,6 +11,7 @@ import '../../src/models/candidateProfile.model';
 import '../../src/models/recruiterProfile.model';
 import '../../src/models/job.model';
 import '../../src/models/application.model';
+import '../../src/models/verificationToken.model';
 
 /**
  * Connect this file to the shared in-memory MongoDB and wipe it between tests.
@@ -57,6 +59,11 @@ export const useTestDatabase = () => {
                 collection.deleteMany({}),
             ),
         );
+
+        // The fake mailer's outbox is shared process state, exactly like the
+        // database. Registration sends mail from several test files, so without
+        // this a test could read a link left behind by an earlier one.
+        testInbox.clear();
     });
 
     afterAll(async () => {

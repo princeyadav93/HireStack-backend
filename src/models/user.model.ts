@@ -34,6 +34,12 @@ const userSchema = new Schema<IUser>(
             enum: ['candidate', 'recruiter', 'admin'],
             default: 'candidate',
         },
+        // Anyone can type anyone's address at registration, so an account is
+        // unverified until a link sent to that inbox is clicked.
+        isEmailVerified: {
+            type: Boolean,
+            default: false,
+        },
         refreshToken: {
             type: String,
             select: false, // never returned by default
