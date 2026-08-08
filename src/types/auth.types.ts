@@ -49,6 +49,8 @@ export interface JwtPayload {
 export interface RefreshPayload {
     userId: string;
     type: TokenType;
+    /** Unique per issue, so no two refresh tokens are ever byte-identical. */
+    jti?: string;
     iat?: number;
     exp?: number;
 }

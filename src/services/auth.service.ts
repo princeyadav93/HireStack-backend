@@ -5,6 +5,7 @@ import { LoginInput, RefreshPayload, TOKEN_TYPE } from '../types/auth.types';
 import { ENV } from '../config/env';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
+import { hashToken, tokenMatchesHash } from '../utils/hashToken';
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -25,11 +26,11 @@ const generateAndStoreTokens = async (
     const accessToken = user.accessTokenGenerate();
     const refreshToken = user.refreshTokenGenerate();
 
-    const hashed = await bcrypt.hash(refreshToken, ENV.SALTROUNDS);
-
+    // Only the newest token's hash is kept, which is what makes issuing a new
+    // one retire the old one.
     await User.findByIdAndUpdate(
         user._id,
-        { refreshToken: hashed },
+        { refreshToken: hashToken(refreshToken) },
         { new: true, runValidators: true },
     );
 
@@ -117,12 +118,7 @@ export const refreshTokenService = async (
         );
     }
 
-    const isMatch = await bcrypt.compare(
-        incomingRefreshToken,
-        user.refreshToken,
-    );
-
-    if (!isMatch) {
+    if (!tokenMatchesHash(incomingRefreshToken, user.refreshToken)) {
         throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Refresh token mismatch');
     }
 
