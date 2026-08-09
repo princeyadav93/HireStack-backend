@@ -286,6 +286,7 @@ addresses have accounts.
 | PATCH  | `/unblock/member/:memberId`     | OWNER / ADMIN      |
 | GET    | `/:companyId`                   | Auth               |
 | PATCH  | `/:companyId`                   | OWNER (own company only) |
+| PATCH  | `/:companyId/logo`              | OWNER (own company only) — multipart field `logo`, PNG/JPEG/WebP, max 2 MB |
 
 ### Platform admin — `/admin` *(platform admin only)*
 

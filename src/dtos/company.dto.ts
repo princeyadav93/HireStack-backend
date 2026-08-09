@@ -73,3 +73,39 @@ export const UpdateCompanyDTO = z.object({
 });
 
 export type UpdateCompanyType = z.infer<typeof UpdateCompanyDTO>;
+
+/**
+ * A company logo upload.
+ *
+ * Multer enforces the size ceiling first and rejects anything larger before the
+ * buffer is ever held in memory; repeating it here keeps the DTO honest as the
+ * single description of what the endpoint accepts.
+ *
+ * `mimetype` is client-supplied and trivially forged, so this is a usability
+ * filter, not a security boundary — Cloudinary re-decodes the bytes and rejects
+ * anything that is not really an image. SVG is deliberately excluded: it is a
+ * document format that can carry script, and logos get rendered on pages we do
+ * not control.
+ */
+export const CompanyLogoDTO = z.object({
+    file: z
+        .object({
+            originalname: z.string(),
+            mimetype: z.string(),
+            size: z
+                .number()
+                .max(2 * 1024 * 1024, 'Logo must be 2MB or smaller'),
+        })
+        .refine(
+            (file) =>
+                ['image/png', 'image/jpeg', 'image/webp'].includes(
+                    file.mimetype,
+                ),
+            {
+                message:
+                    'Invalid file type. Only PNG, JPEG and WebP images are allowed.',
+            },
+        ),
+});
+
+export type CompanyLogoType = z.infer<typeof CompanyLogoDTO>;

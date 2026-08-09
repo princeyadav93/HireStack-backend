@@ -15,7 +15,9 @@ import {
     deleteRecruiterController,
     getCompanyController,
     updateCompanyController,
+    uploadCompanyLogoController,
 } from '../controllers/companyOwner.controller';
+import { upload } from '../middleware/upload';
 
 const router = express.Router();
 
@@ -61,6 +63,19 @@ router.delete(
     verifyCompanyMember,
     verifyCompanyOwnerOrAdmin,
     deleteRecruiterController,
+);
+
+// PATCH /company/:companyId/logo
+// OWNER only — same authority as editing any other company detail.
+// Registered before `/:companyId` for readability; the two cannot collide, as
+// a single-segment pattern never matches a two-segment path.
+router.patch(
+    '/:companyId/logo',
+    verifyJWT,
+    verifyCompanyMember,
+    verifyCompanyOwner,
+    upload.single('logo'),
+    uploadCompanyLogoController,
 );
 
 // GET /company/:companyId
