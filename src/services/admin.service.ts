@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { User } from '../models/user.model';
 import { RegisterInput } from '../types/auth.types';
 import { ENV } from '../config/env';
+import { logger } from '../config/logger';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { IUserSafe } from '../types/user.types';
@@ -41,7 +42,10 @@ export const registerAdminService = async (
     // An existing admin vouched for this address, but nobody has proved they
     // can read it — so it starts unverified like any other account.
     await sendVerificationEmail(userDocs[0]).catch((error) =>
-        console.error('[auth] verification email failed', error),
+        logger.error(
+            { err: error, event: 'email.send_failed', userId: userDocs[0]._id },
+            'Verification email failed',
+        ),
     );
 
     const { password: _, ...userSafe } = userDocs[0].toObject();
