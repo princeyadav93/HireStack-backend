@@ -2,8 +2,10 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import swaggerUi from 'swagger-ui-express';
 import { ENV } from './config/env';
 import { httpLogger } from './config/logger';
+import { openApiDocument } from './docs/openapi';
 import { HTTP_STATUS } from './constants';
 import { ApiError } from './utils/ApiError';
 import { globalLimiter } from './middleware/rateLimit.middleware';
@@ -87,6 +89,33 @@ app.use(express.urlencoded({ extended: true, limit: '16kb' }));
 app.use(express.json({ limit: '16kb' }));
 app.use(express.static('public'));
 app.use(cookieParser());
+
+/**
+ * API documentation.
+ *
+ * Served by the app itself rather than published separately, so the docs are
+ * always the docs for the build that is running — a spec deployed out-of-band
+ * is a spec that will eventually describe last month's API.
+ *
+ * helmet's default CSP blocks the inline styles Swagger UI injects, so it is
+ * relaxed for this route only, not globally.
+ */
+app.use(
+    '/docs',
+    helmet({ contentSecurityPolicy: false }),
+    swaggerUi.serve,
+    swaggerUi.setup(openApiDocument, {
+        customSiteTitle: 'HireStack API',
+        // Auth is cookie-based, so the browser must send credentials for
+        // "Try it out" to work at all.
+        swaggerOptions: { withCredentials: true, persistAuthorization: true },
+    }),
+);
+
+// The raw document, for client generators and other tooling.
+app.get('/docs.json', (_, res) => {
+    res.status(HTTP_STATUS.OK).json(openApiDocument);
+});
 
 // Health check
 app.get('/', (_, res) => {
