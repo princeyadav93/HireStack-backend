@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { User, IUser } from '../models/user.model';
 import { LoginInput, RefreshPayload, TOKEN_TYPE } from '../types/auth.types';
 import { ENV } from '../config/env';
+import { logger } from '../config/logger';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { hashToken, tokenMatchesHash } from '../utils/hashToken';
@@ -63,8 +64,13 @@ const sendQuietly = async (email: OutgoingEmail): Promise<void> => {
         await sendMail(email);
     } catch (error) {
         // Worth alerting on — every failure here is a user who asked for a link
-        // and was told one was coming.
-        console.error(`[email] failed to send "${email.subject}"`, error);
+        // and was told one was coming. Logged as a field rather than
+        // interpolated into the message so an alert can match on
+        // `event: "email.send_failed"` instead of parsing prose.
+        logger.error(
+            { err: error, event: 'email.send_failed', subject: email.subject },
+            'Failed to send email',
+        );
     }
 };
 

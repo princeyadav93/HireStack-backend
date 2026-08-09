@@ -1,9 +1,9 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { ENV } from './config/env';
+import { httpLogger } from './config/logger';
 import { HTTP_STATUS } from './constants';
 import { ApiError } from './utils/ApiError';
 import { globalLimiter } from './middleware/rateLimit.middleware';
@@ -22,6 +22,33 @@ import jobRouter from './routes/job.route';
 import applicationRouter from './routes/application.route';
 
 const app: Application = express();
+
+/**
+ * Trust exactly one proxy hop.
+ *
+ * On Render, Railway, Fly or behind nginx, nothing reaches this process
+ * directly — the platform's load balancer does, and it puts the real client
+ * address in `X-Forwarded-For`. Left unset, Express reports the balancer's IP
+ * as `req.ip` for every request, and since the rate limiters key on `req.ip`
+ * the whole internet shares one bucket: 300 requests in 15 minutes across all
+ * users, then everyone is locked out together.
+ *
+ * `1`, not `true`. `true` trusts the entire forwarded chain, which is
+ * caller-supplied — anyone can send `X-Forwarded-For: <random>` and get a fresh
+ * rate limit bucket per request, making the limiters decorative. `1` reads only
+ * the hop the platform itself appended, which is the one address a client
+ * cannot forge. Raise it only if you add another proxy in front (Cloudflare in
+ * front of Render is two).
+ */
+app.set('trust proxy', 1);
+
+// Logging goes first, before anything that can reject a request.
+//
+// It attaches `req.id` and `req.log`, and everything downstream — including the
+// CORS check and the rate limiter — can fail. Mounted any later, the requests
+// most worth having a record of would be the ones that never got logged, and
+// the error handler would reach for a `req.log` that was never attached.
+app.use(httpLogger);
 
 // Security middleware
 app.use(helmet());
@@ -54,9 +81,6 @@ app.use(
 
 // Baseline request ceiling; tighter limits sit on the auth routes themselves.
 app.use(globalLimiter);
-
-// Logging
-app.use(morgan('dev'));
 
 // Body parser
 app.use(express.urlencoded({ extended: true, limit: '16kb' }));

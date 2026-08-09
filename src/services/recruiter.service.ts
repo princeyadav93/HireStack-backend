@@ -5,6 +5,7 @@ import { ApiError } from '../utils/ApiError';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
+import { logger } from '../config/logger';
 import mongoose from 'mongoose';
 import { createRecruiterProfile } from '../utils/profileHelper';
 import { sendVerificationEmail } from './auth.service';
@@ -60,7 +61,10 @@ export const registerRecruiterService = async (
         // logged rather than thrown, so a mail outage cannot undo a valid
         // registration.
         await sendVerificationEmail(user).catch((error) =>
-            console.error('[auth] verification email failed', error),
+            logger.error(
+                { err: error, event: 'email.send_failed', userId: user._id },
+                'Verification email failed',
+            ),
         );
 
         const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {

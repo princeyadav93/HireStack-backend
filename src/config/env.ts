@@ -54,6 +54,11 @@ export const ENV = {
     NODE_ENV: getEnv('NODE_ENV', 'development'),
     SALTROUNDS: parseInt(getEnv('SALTROUNDS')),
 
+    // Blank means "let logger.ts pick by environment". Set it to raise or lower
+    // verbosity on a deployed instance without a code change — the usual reason
+    // being to turn `debug` on for ten minutes while chasing something.
+    LOG_LEVEL: optionalEnv('LOG_LEVEL'),
+
     // ─── Email ────────────────────────────────────────────────
     // Where the links in emails point: the frontend that will call this API,
     // not the API itself. A reset link has to open a page with a password
