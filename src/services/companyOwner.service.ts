@@ -17,6 +17,7 @@ import {
 } from '../dtos/company.dto';
 import { ENV } from '../config/env';
 import { escapeRegex } from '../utils/escapeRegex';
+import cloudinary from '../config/cloudinary';
 
 export const createCompanyService = async (
     data: CreateCompanyType,
@@ -398,6 +399,89 @@ export const updateCompanyService = async (
     const updated = await Company.findByIdAndUpdate(
         companyId,
         { $set: data },
+        { new: true, runValidators: true },
+    )
+        .populate('createdBy', 'name email')
+        .lean();
+
+    return updated as unknown as ICompany;
+};
+
+/**
+ * Replace a company's logo.
+ *
+ * @param companyId       company named in the URL
+ * @param file            the uploaded image, held in memory by multer
+ * @param actingCompanyId company the caller owns, from their membership record
+ *
+ * The upload happens before the write, so a Cloudinary failure leaves the
+ * existing logo untouched rather than blanking it — the record is only pointed
+ * at the new image once there is a new image to point at.
+ */
+export const uploadCompanyLogoService = async (
+    companyId: string,
+    file: Express.Multer.File,
+    actingCompanyId: string,
+) => {
+    if (!Types.ObjectId.isValid(companyId)) {
+        throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid company ID');
+    }
+
+    // Same reasoning as updateCompanyService: owning a company is not
+    // permission to re-brand someone else's.
+    if (companyId !== actingCompanyId) {
+        throw new ApiError(
+            HTTP_STATUS.FORBIDDEN,
+            'You can only update your own company',
+        );
+    }
+
+    const company = await Company.findById(companyId).select('isArchived').lean();
+
+    if (!company || company.isArchived) {
+        throw new ApiError(HTTP_STATUS.NOT_FOUND, 'Company not found');
+    }
+
+    const result = await new Promise<{ secure_url: string }>(
+        (resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                {
+                    folder: 'company_logos',
+                    // Named after the company, so re-uploading overwrites the
+                    // previous file instead of orphaning it. Every other upload
+                    // in this codebase leaks its predecessor on Cloudinary —
+                    // that gap is in the roadmap, and a logo is the one case
+                    // where a stable identity makes it free to avoid.
+                    public_id: companyId,
+                    overwrite: true,
+                    resource_type: 'image',
+                },
+                (error, uploaded) => {
+                    if (error || !uploaded) {
+                        return reject(
+                            new ApiError(
+                                HTTP_STATUS.INTERNAL_SERVER,
+                                'Logo upload failed. Please try again.',
+                            ),
+                        );
+                    }
+                    resolve(uploaded as { secure_url: string });
+                },
+            );
+
+            stream.end(file.buffer);
+        },
+    );
+
+    const updated = await Company.findByIdAndUpdate(
+        companyId,
+        {
+            $set: {
+                'logo.url': result.secure_url,
+                'logo.fileName': file.originalname,
+                'logo.uploadedAt': new Date(),
+            },
+        },
         { new: true, runValidators: true },
     )
         .populate('createdBy', 'name email')
