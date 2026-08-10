@@ -1,22 +1,41 @@
 import { Company } from '../models/company.model';
 import { User } from '../models/user.model';
 import { CompanyMember } from '../models/companyMember.model';
-import { HTTP_STATUS } from '../constants';
+import { HTTP_STATUS, PAGINATION } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import mongoose, { Types } from 'mongoose';
 import { RecruiterProfile } from '../models/recruiterProfile.model';
+import { escapeRegex } from '../utils/escapeRegex';
 
 /**
  * Get all pending companies
  * Admin only - for company verification/approval
+ *
+ * Paginated: the approval queue is unbounded by nature — it grows with signups
+ * and only shrinks when an admin works through it.
  */
-export const getPendingCompaniesService = async () => {
-    const pendingCompanies = await Company.find({ status: 'pending' })
-        .select('name industry description createdBy createdAt status')
-        .populate('createdBy', 'name email')
-        .lean();
+export const getPendingCompaniesService = async (
+    page: number = PAGINATION.DEFAULT_PAGE,
+    limit: number = PAGINATION.DEFAULT_LIMIT,
+) => {
+    const query = { status: 'pending' };
+    const skip = (page - 1) * limit;
 
-    return pendingCompanies;
+    const [companies, total] = await Promise.all([
+        Company.find(query)
+            .select('name industry description createdBy createdAt status')
+            .populate('createdBy', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Company.countDocuments(query),
+    ]);
+
+    return {
+        companies,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    };
 };
 
 /**
@@ -281,12 +300,16 @@ export const unsuspendCompanyService = async (
 /**
  * Get all companies with filters (admin audit view)
  */
-export const getCompaniesService = async (filters?: {
-    status?: string[];
-    createdBy?: string;
-    isSuspended?: boolean;
-    searchTerm?: string;
-}) => {
+export const getCompaniesService = async (
+    filters?: {
+        status?: string[];
+        createdBy?: string;
+        isSuspended?: boolean;
+        searchTerm?: string;
+    },
+    page: number = PAGINATION.DEFAULT_PAGE,
+    limit: number = PAGINATION.DEFAULT_LIMIT,
+) => {
     const query: Record<string, unknown> = {};
 
     if (filters?.status && filters.status.length > 0) {
@@ -302,21 +325,35 @@ export const getCompaniesService = async (filters?: {
     }
 
     if (filters?.searchTerm) {
+        // Escaped like every other search path in the codebase. Unescaped, a
+        // term such as `(a+)+$` is a catastrophic-backtracking pattern: one
+        // request pins the event loop and the whole API stops answering.
+        const pattern = escapeRegex(filters.searchTerm);
         query.$or = [
-            { name: { $regex: filters.searchTerm, $options: 'i' } },
-            { industry: { $regex: filters.searchTerm, $options: 'i' } },
+            { name: { $regex: pattern, $options: 'i' } },
+            { industry: { $regex: pattern, $options: 'i' } },
         ];
     }
 
-    const companies = await Company.find(query)
-        .select(
-            'name industry status createdBy createdAt suspensionDetails.isSuspended suspensionDetails.reason suspensionDetails.suspendedAt',
-        )
-        .populate('createdBy', 'name email')
-        .sort({ createdAt: -1 })
-        .lean();
+    const skip = (page - 1) * limit;
 
-    return companies;
+    const [companies, total] = await Promise.all([
+        Company.find(query)
+            .select(
+                'name industry status createdBy createdAt suspensionDetails.isSuspended suspensionDetails.reason suspensionDetails.suspendedAt',
+            )
+            .populate('createdBy', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Company.countDocuments(query),
+    ]);
+
+    return {
+        companies,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    };
 };
 
 /**

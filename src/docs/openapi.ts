@@ -732,14 +732,37 @@ export const openApiDocument = {
         '/admin/companies/pending': {
             get: {
                 tags: ['Platform admin'],
-                summary: 'List companies awaiting approval',
+                summary: 'List companies awaiting approval (paginated)',
+                parameters: PAGINATION_PARAMS,
                 responses: ok('Pending companies returned.'),
             },
         },
         '/admin/companies': {
             get: {
                 tags: ['Platform admin'],
-                summary: 'List all companies',
+                summary: 'List all companies (paginated)',
+                parameters: [
+                    {
+                        name: 'status',
+                        in: 'query',
+                        schema: { type: 'string' },
+                        description:
+                            'Comma-separated: pending, approved, rejected, suspended.',
+                    },
+                    {
+                        name: 'isSuspended',
+                        in: 'query',
+                        schema: { type: 'boolean' },
+                    },
+                    {
+                        name: 'searchTerm',
+                        in: 'query',
+                        schema: { type: 'string' },
+                        description:
+                            'Matches name or industry. Regex-escaped before it reaches the query.',
+                    },
+                    ...PAGINATION_PARAMS,
+                ],
                 responses: ok('Companies returned.'),
             },
         },

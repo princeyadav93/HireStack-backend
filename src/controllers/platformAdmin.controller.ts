@@ -19,17 +19,28 @@ import {
 
 /**
  * Get all pending companies waiting for admin approval
+ * Query params:
+ *   page=1 (default)
+ *   limit=10 (default)
  */
 export const getPendingCompaniesController = asyncHandler(
     async (req: Request, res: Response) => {
         const user = req.user!;
-        const companies = await getPendingCompaniesService();
+        const { page, limit } = getPagination(req.query);
+
+        const { companies, pagination } = await getPendingCompaniesService(
+            page,
+            limit,
+        );
         const userRole = user.role;
 
         res.status(HTTP_STATUS.OK).json(
             new ApiResponse(
                 HTTP_STATUS.OK,
-                formatCompanyForRole(companies, userRole),
+                {
+                    companies: formatCompanyForRole(companies, userRole),
+                    pagination,
+                },
                 'Pending companies retrieved',
             ),
         );
@@ -179,10 +190,13 @@ export const unsuspendCompanyController = asyncHandler(
  *   status=pending,approved,suspended,rejected (comma-separated)
  *   isSuspended=true/false
  *   searchTerm=string
+ *   page=1 (default)
+ *   limit=10 (default)
  */
 export const getCompaniesController = asyncHandler(
     async (req: Request, res: Response) => {
         const { status, isSuspended, searchTerm } = req.query;
+        const { page, limit } = getPagination(req.query);
 
         const filters = {
             status: status
@@ -192,14 +206,21 @@ export const getCompaniesController = asyncHandler(
             searchTerm: searchTerm as string,
         };
 
-        const companies = await getCompaniesService(filters);
+        const { companies, pagination } = await getCompaniesService(
+            filters,
+            page,
+            limit,
+        );
         const user = req.user!;
         const userRole = user.role;
 
         res.status(HTTP_STATUS.OK).json(
             new ApiResponse(
                 HTTP_STATUS.OK,
-                formatCompanyForRole(companies, userRole),
+                {
+                    companies: formatCompanyForRole(companies, userRole),
+                    pagination,
+                },
                 'Companies retrieved',
             ),
         );
