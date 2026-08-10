@@ -8,6 +8,14 @@ export const COOKIE_OPTIONS = {
     maxAge: 24 * 60 * 60 * 1000, // 1 day
 };
 
+// Here rather than in a controller: login, candidate registration and recruiter
+// registration all set this cookie, and a refresh lifetime that differs between
+// them would log part of the users out early for no visible reason.
+export const REFRESH_COOKIE_OPTIONS = {
+    ...COOKIE_OPTIONS,
+    maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days — matches REFRESH_TOKEN_EXPIRY
+};
+
 export const HTTP_STATUS = {
     OK: 200,
     CREATED: 201,

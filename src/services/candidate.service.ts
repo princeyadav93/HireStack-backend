@@ -1,6 +1,5 @@
 // src/services/candidate.service.ts
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { User } from '../models/user.model';
 import { RegisterInput } from '../types/auth.types';
 import { ENV } from '../config/env';
@@ -8,13 +7,17 @@ import { logger } from '../config/logger';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { createCandidateProfile } from '../utils/profileHelper';
-import { sendVerificationEmail } from './auth.service';
+import { generateAndStoreTokens, sendVerificationEmail } from './auth.service';
 import mongoose from 'mongoose';
 import { IUserSafe } from '../types/user.types';
 
 export const registerCandidateService = async (
     data: RegisterInput,
-): Promise<{ user: IUserSafe; token: string }> => {
+): Promise<{
+    user: IUserSafe;
+    accessToken: string;
+    refreshToken: string;
+}> => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -61,13 +64,14 @@ export const registerCandidateService = async (
             ),
         );
 
-        const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {
-            expiresIn: '1d',
-        });
+        // The same pair login issues, from the same helper — registration must
+        // leave the caller genuinely logged in, and a hand-rolled token here
+        // silently did not.
+        const { accessToken, refreshToken } = await generateAndStoreTokens(user);
 
         const { password: _, ...userSafe } = userDocs[0].toObject();
 
-        return { user: userSafe as IUserSafe, token };
+        return { user: userSafe as IUserSafe, accessToken, refreshToken };
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
