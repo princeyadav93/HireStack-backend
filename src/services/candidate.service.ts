@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/user.model';
 import { RegisterInput } from '../types/auth.types';
 import { ENV } from '../config/env';
+import { logger } from '../config/logger';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { createCandidateProfile } from '../utils/profileHelper';
@@ -54,7 +55,10 @@ export const registerCandidateService = async (
         // and a mail outage must not undo an account that was created
         // correctly. An unverified user can ask for another link.
         await sendVerificationEmail(user).catch((error) =>
-            console.error('[auth] verification email failed', error),
+            logger.error(
+                { err: error, event: 'email.send_failed', userId: user._id },
+                'Verification email failed',
+            ),
         );
 
         const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {

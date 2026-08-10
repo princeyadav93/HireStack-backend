@@ -4,6 +4,7 @@ import { MulterError } from 'multer';
 import mongoose from 'mongoose';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { HTTP_STATUS } from '../constants';
+import { logger } from '../config/logger';
 
 interface NormalisedError {
     statusCode: number;
@@ -112,22 +113,19 @@ export const errorHandler = (
     const { statusCode, message, errors } = normalise(err);
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // Server-side faults are always logged; client mistakes are noise.
+    // `req.log` is the per-request child logger, so this line carries the same
+    // `req.id` as the access-log line for the request that failed — which is
+    // what makes a stack trace traceable to the call that produced it. The
+    // fallback only matters if the app is assembled without httpLogger.
+    const log = req.log ?? logger;
+
+    // Server-side faults are always logged; client mistakes are noise. The
+    // method and path are already on the request log line, so only what is
+    // genuinely new gets repeated here.
     if (statusCode >= HTTP_STATUS.INTERNAL_SERVER) {
-        console.error('❌ Error:', {
-            method: req.method,
-            path: req.originalUrl,
-            statusCode,
-            message,
-            stack: err?.stack,
-        });
+        log.error({ err, statusCode }, message);
     } else if (!isProduction) {
-        console.error('❌ Error:', {
-            method: req.method,
-            path: req.originalUrl,
-            statusCode,
-            message,
-        });
+        log.debug({ statusCode }, message);
     }
 
     // An unexpected 500 message can carry internal detail (driver errors, file

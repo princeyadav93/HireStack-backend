@@ -137,6 +137,13 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-IMPROVEMENTS_AND_ROADMAP.md
 API_TEST_COLLECTION.json
-LINKEDIN_POSTS.md
+
+# Markdown stays local — roadmaps, notes and the docs/learning/ writeups are
+# working material, not part of the shipped repo.
+#
+# README.md is unaffected: it was committed before this rule, and .gitignore
+# has no say over files Git already tracks. That is deliberate — it is the
+# project's front page on GitHub. To drop it too:
+#     git rm --cached README.md
+*.md

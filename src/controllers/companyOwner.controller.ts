@@ -5,6 +5,7 @@ import {
     CreateAdminDTO,
     CreateRecruiterDTO,
     UpdateCompanyDTO,
+    CompanyLogoDTO,
 } from '../dtos/company.dto';
 import {
     createCompanyService,
@@ -12,6 +13,7 @@ import {
     createRecruiterService,
     getCompanyService,
     updateCompanyService,
+    uploadCompanyLogoService,
 } from '../services/companyOwner.service';
 import { formatCompanyForRole } from '../utils/formatCompanyResponse';
 import {
@@ -21,6 +23,7 @@ import {
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import { ApiResponse } from '../utils/ApiResponse';
+import { getParam } from '../utils/requestParams';
 
 export const createCompanyController = asyncHandler(
     async (req: Request, res: Response) => {
@@ -229,6 +232,43 @@ export const updateCompanyController = asyncHandler(
                 HTTP_STATUS.OK,
                 formatCompanyForRole(updated, req.user!.role),
                 'Company updated successfully',
+            ),
+        );
+    },
+);
+
+export const uploadCompanyLogoController = asyncHandler(
+    async (req: Request, res: Response) => {
+        const companyId = getParam(req, 'companyId');
+
+        // Set by verifyCompanyMember from the caller's membership record.
+        if (!req.companyId) {
+            throw new ApiError(
+                HTTP_STATUS.FORBIDDEN,
+                'You are not a member of any company',
+            );
+        }
+
+        if (!req.file) {
+            throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'No logo uploaded');
+        }
+
+        // Multer has already parsed the file; the DTO is what decides whether
+        // this one is acceptable, keeping the rule in the same place as every
+        // other request shape.
+        CompanyLogoDTO.parse({ file: req.file });
+
+        const updated = await uploadCompanyLogoService(
+            companyId,
+            req.file,
+            req.companyId,
+        );
+
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                formatCompanyForRole(updated, req.user!.role),
+                'Company logo updated successfully',
             ),
         );
     },

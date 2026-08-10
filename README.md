@@ -7,8 +7,7 @@ profile, browse published jobs, and apply.
 Built with **TypeScript + Express 5 + MongoDB (Mongoose 9)**, with cookie-based JWT
 auth, Zod validation, and strict per-company data isolation.
 
-> **Status:** actively built, not yet production-deployed. See
-> [ROADMAP.md](./ROADMAP.md) for what's done, what's next, and what's missing.
+> **Status:** actively built, not yet production-deployed.
 
 ---
 
@@ -204,6 +203,15 @@ another tenant's data by changing an ID in the URL — cross-tenant reads return
 
 ## API reference
 
+**Interactive docs run with the app: [http://localhost:3000/docs](http://localhost:3000/docs).**
+The raw OpenAPI 3.1 document is at `/docs.json`, ready for client generators.
+
+Request schemas there are generated from the same Zod DTOs the routes validate with, so
+they cannot drift from the code. A test fails CI if a route is added without a matching
+entry in `src/docs/openapi.ts`.
+
+The tables below stay as a quick reference.
+
 All responses share one shape:
 
 ```jsonc
@@ -287,6 +295,7 @@ addresses have accounts.
 | PATCH  | `/unblock/member/:memberId`     | OWNER / ADMIN      |
 | GET    | `/:companyId`                   | Auth               |
 | PATCH  | `/:companyId`                   | OWNER (own company only) |
+| PATCH  | `/:companyId/logo`              | OWNER (own company only) — multipart field `logo`, PNG/JPEG/WebP, max 2 MB |
 
 ### Platform admin — `/admin` *(platform admin only)*
 
@@ -361,7 +370,8 @@ addresses have accounts.
 
 ```
 src/
-├── config/        env validation, MongoDB, Cloudinary
+├── config/        env validation, MongoDB, Cloudinary, logger
+├── docs/          OpenAPI document; schemas generated from the DTOs
 ├── constants/     enums (roles, job/application status, transition table)
 ├── constants.ts   HTTP status codes, cookie options, pagination limits
 ├── controllers/   HTTP layer — parse, delegate, respond
