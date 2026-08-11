@@ -8,7 +8,11 @@ import {
     resetPasswordService,
     verifyEmailService,
 } from '../services/auth.service';
-import { COOKIE_OPTIONS, HTTP_STATUS } from '../constants';
+import {
+    COOKIE_OPTIONS,
+    HTTP_STATUS,
+    REFRESH_COOKIE_OPTIONS,
+} from '../constants';
 import {
     ForgotPasswordDTO,
     LoginDTO,
@@ -18,11 +22,6 @@ import {
 import { ApiError } from '../utils/ApiError';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiResponse } from '../utils/ApiResponse';
-
-const REFRESH_COOKIE_OPTIONS = {
-    ...COOKIE_OPTIONS,
-    maxAge: 10 * 24 * 60 * 60 * 1000, // 10 days — matches REFRESH_TOKEN_EXPIRY
-};
 
 export const login = asyncHandler(
     async (req: Request, res: Response, _next: NextFunction) => {

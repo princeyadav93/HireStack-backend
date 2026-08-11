@@ -346,7 +346,7 @@ addresses have accounts.
 | Concern                | How it's handled                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Password storage       | bcrypt, configurable cost. `password` has `select: false` and is stripped again in `toJSON`.                  |
-| Token transport        | httpOnly cookies — JavaScript on the page cannot read them. `secure` + `sameSite: strict` in production.      |
+| Token transport        | httpOnly cookies — JavaScript on the page cannot read them, and they are never echoed in a response body. `secure` in production, `sameSite: lax` throughout — see the deployment notes for why not `strict` or `none`. |
 | Token confusion        | Access and refresh tokens carry a `type` claim; an endpoint expecting one rejects the other outright.         |
 | Logout / revocation    | Logout increments `tokenVersion`, retiring **every** token issued before it. Checked on each request.         |
 | Login enumeration      | Wrong email and wrong password return the identical 401, and a dummy bcrypt compare keeps timing flat.        |
@@ -419,15 +419,84 @@ into `QA` or `production`:
 
 ## Deployment notes
 
-- **Set `NODE_ENV=production`.** It switches cookies to `secure` + `sameSite: strict` and
-  stops 5xx responses leaking internal detail.
-- **Behind a reverse proxy** (nginx, Heroku, Render, Railway), add
-  `app.set('trust proxy', 1)` in `src/app.ts`, or rate limiting will see the proxy's IP
-  for every request and throttle all users as one. Use `1`, not `true` — trusting every
-  hop lets a client forge `X-Forwarded-For` and skip the limiter entirely.
+### Serve the frontend and the API from one origin
+
+**This is the single most important deployment decision here, and it has to be made
+before the frontend is written.**
+
+A browser only sends a cookie back to the site that set it. Auth is cookie-based, so if
+the frontend is served from `hirestack.vercel.app` and this API from
+`hirestack-api.onrender.com`, every credentialed call is cross-site and the cookie is
+dropped: the user logs in successfully and the next request arrives anonymous. Nothing in
+this repo can detect that — it looks identical to "not logged in".
+
+The fix is to give them one origin, by having the frontend host proxy through to this
+service. On Vercel that is a `vercel.json` in the frontend repo:
+
+```jsonc
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://hirestack-api.onrender.com/:path*" }
+  ]
+}
+```
+
+The frontend then calls `/api/auth/login` instead of the Render URL, the browser sees a
+single origin, and `sameSite: 'lax'` works. Two consequences worth knowing:
+
+- **CORS stops mattering for the app itself.** The browser never makes a cross-origin
+  request, so `CORS_ORIGIN` only governs direct callers — local dev, Postman, anything
+  hitting the API host straight.
+- **Check `TRUST_PROXY` once it is live.** It defaults to `1` — one proxy hop, which is
+  Render on its own. A rewrite puts a second hop in front, so `req.ip` may resolve to the
+  frontend host's edge address rather than the real client, and every user would land in
+  one rate-limit bucket. See below.
+
+The alternative — `sameSite: 'none'` on the cookies — is one line and permits cross-site
+requests from *any* site, not just yours. That is CSRF, and taking it means also building
+token or origin checks on every state-changing route. The rewrite avoids the problem
+rather than answering it. See the comment on `COOKIE_OPTIONS` in `src/constants.ts`.
+
+### Getting `TRUST_PROXY` right
+
+Rate limits are counted per client IP, and `TRUST_PROXY` is what decides which address in
+`X-Forwarded-For` counts as the client. Set it to the number of proxies in front of the
+app:
+
+| Setup | Value |
+| ----- | ----- |
+| Local, no proxy | `0` |
+| Render / Railway / Fly / nginx alone | `1` *(default)* |
+| Vercel rewrite → Render | `2` |
+| Cloudflare → Vercel rewrite → Render | `3` |
+
+Too low and every request appears to come from the proxy, so all users share one bucket —
+**the 5-per-hour email limiter becomes 5 per hour across the whole platform**, and ten
+failed logins lock out everybody. Too high and a client can forge the header. Nothing
+errors either way, which is why it is worth two minutes to check.
+
+**How to check after deploying.** Every request log line carries an `ip` field. Call the
+API from a known address — your phone on mobile data works, since it differs from your
+home connection — and look at that line in the platform's log viewer:
+
+- `ip` matches the address you called from → correct, nothing to do
+- `ip` is something else, and identical across requests → raise `TRUST_PROXY` by one and
+  restart
+
+It is an environment variable rather than a constant precisely so this is a dashboard
+change and a restart, not a commit and a redeploy.
+
+`true` is not a valid value. It trusts the entire caller-supplied chain and makes the
+limiters bypassable, so `src/config/env.ts` rejects any non-integer at boot.
+
+### The rest
+
+- **Set `NODE_ENV=production`.** It switches cookies to `secure` (HTTPS only) and stops
+  5xx responses leaking internal detail.
 - **Use a distinct `REFRESH_TOKEN_SECRET`.** It falls back to `JWT_SECRET`, which is fine
   for local work but means one leaked secret compromises both token types.
-- **`CORS_ORIGIN` must list the real frontend origin(s).** Anything not listed gets a 403.
+- **`CORS_ORIGIN` must list any origin calling the API directly.** Anything not listed
+  gets a 403.
 - **Rate limit counters are in-memory**, so they are per-process and reset on restart.
   Move to a shared store (Redis) before running more than one instance.
 
