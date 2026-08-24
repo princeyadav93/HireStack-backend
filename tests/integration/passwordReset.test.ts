@@ -182,7 +182,10 @@ describe('POST /auth/reset-password', () => {
     });
 
     it('marks the email verified, since the link proved inbox control', async () => {
-        const user = await createUser({ email: 'ada@example.com' });
+        const user = await createUser({
+            email: 'ada@example.com',
+            isEmailVerified: false,
+        });
         expect(user.isEmailVerified).toBe(false);
 
         const token = await requestReset(user.email);

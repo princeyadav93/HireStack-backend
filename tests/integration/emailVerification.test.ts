@@ -102,7 +102,7 @@ describe('POST /auth/verify-email', () => {
     });
 
     it('rejects a password-reset token presented here', async () => {
-        const user = await createUser();
+        const user = await createUser({ isEmailVerified: false });
         const resetToken = await issueToken(
             user._id,
             VerificationTokenType.PASSWORD_RESET,
@@ -122,7 +122,7 @@ describe('POST /auth/verify-email', () => {
     });
 
     it('rejects an expired token even while the row still exists', async () => {
-        const user = await createUser();
+        const user = await createUser({ isEmailVerified: false });
         const token = await issueToken(
             user._id,
             VerificationTokenType.EMAIL_VERIFICATION,
@@ -167,7 +167,10 @@ describe('POST /auth/verify-email/resend', () => {
     });
 
     it('sends a fresh link to the logged-in user', async () => {
-        const user = await createUser({ email: 'grace@example.com' });
+        const user = await createUser({
+            email: 'grace@example.com',
+            isEmailVerified: false,
+        });
         const cookies = await login(user.email, TEST_PASSWORD);
         testInbox.clear();
 
@@ -180,7 +183,10 @@ describe('POST /auth/verify-email/resend', () => {
     });
 
     it('retires the previous link when a new one is issued', async () => {
-        const user = await createUser({ email: 'grace@example.com' });
+        const user = await createUser({
+            email: 'grace@example.com',
+            isEmailVerified: false,
+        });
         const first = await issueToken(
             user._id,
             VerificationTokenType.EMAIL_VERIFICATION,
@@ -196,7 +202,10 @@ describe('POST /auth/verify-email/resend', () => {
     });
 
     it('keeps only one outstanding token however often it is asked', async () => {
-        const user = await createUser({ email: 'grace@example.com' });
+        const user = await createUser({
+            email: 'grace@example.com',
+            isEmailVerified: false,
+        });
         const cookies = await login(user.email, TEST_PASSWORD);
 
         for (let i = 0; i < 3; i++) {
@@ -209,9 +218,9 @@ describe('POST /auth/verify-email/resend', () => {
     });
 
     it('sends nothing to an already-verified user but still answers 200', async () => {
-        const user = await createUser({ email: 'grace@example.com' });
-        await User.findByIdAndUpdate(user._id, {
-            $set: { isEmailVerified: true },
+        const user = await createUser({
+            email: 'grace@example.com',
+            isEmailVerified: true,
         });
 
         const cookies = await login(user.email, TEST_PASSWORD);

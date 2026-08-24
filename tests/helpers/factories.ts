@@ -32,11 +32,17 @@ export const createUser = async ({
     email,
     password = TEST_PASSWORD,
     name = 'Test User',
+    // Verified by default, unlike a real registration. requireVerifiedEmail
+    // gates applying and company creation, and a test about applying should
+    // fail when applying breaks — not when the fixture never clicked a link.
+    // Tests about verification itself opt out with `isEmailVerified: false`.
+    isEmailVerified = true,
 }: {
     role?: 'candidate' | 'recruiter' | 'admin';
     email?: string;
     password?: string;
     name?: string;
+    isEmailVerified?: boolean;
 } = {}) => {
     // The User schema has no pre-save hook — hashing lives in the registration
     // services, so a fixture has to do it itself or login can never match.
@@ -47,6 +53,7 @@ export const createUser = async ({
         email: email ?? uniqueEmail(role),
         password: hashed,
         role,
+        isEmailVerified,
     });
 };
 
@@ -57,8 +64,17 @@ export const createUser = async ({
 export const createCandidate = async ({
     withResume = true,
     email,
-}: { withResume?: boolean; email?: string } = {}) => {
-    const user = await createUser({ role: 'candidate', email });
+    isEmailVerified = true,
+}: {
+    withResume?: boolean;
+    email?: string;
+    isEmailVerified?: boolean;
+} = {}) => {
+    const user = await createUser({
+        role: 'candidate',
+        email,
+        isEmailVerified,
+    });
 
     await CandidateProfile.create({
         user: user._id,
@@ -102,12 +118,14 @@ export const createRecruiterWithCompany = async ({
     role = CompanyRole.OWNER,
     companyStatus = 'approved',
     companyName = 'Test Company',
+    isEmailVerified = true,
 }: {
     role?: CompanyRole;
     companyStatus?: 'pending' | 'approved' | 'rejected' | 'suspended';
     companyName?: string;
+    isEmailVerified?: boolean;
 } = {}) => {
-    const recruiter = await createUser({ role: 'recruiter' });
+    const recruiter = await createUser({ role: 'recruiter', isEmailVerified });
 
     const company = await createCompany({
         createdBy: recruiter._id,

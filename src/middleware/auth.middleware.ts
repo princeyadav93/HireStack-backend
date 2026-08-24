@@ -64,3 +64,32 @@ export const verifyJWT = async (
         next(error);
     }
 };
+
+/**
+ * Gate for the handful of actions where the address has to be a real one the
+ * caller controls: creating a company, applying to a job, and creating accounts
+ * for teammates. Everything else — browsing, profile building, drafting jobs —
+ * stays open, so someone who has just signed up still has something to do while
+ * they go and find the email.
+ *
+ * verifyJWT loads the user fresh on every request, so clicking the link lifts
+ * this on the very next call; there is no stale session to log out of.
+ */
+export const requireVerifiedEmail = (
+    req: Request,
+    _res: Response,
+    next: NextFunction,
+) => {
+    if (!req.user) {
+        throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+    }
+
+    if (!req.user.isEmailVerified) {
+        throw new ApiError(
+            HTTP_STATUS.FORBIDDEN,
+            'Verify your email address to continue',
+        );
+    }
+
+    next();
+};
