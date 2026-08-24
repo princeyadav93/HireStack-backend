@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import {
+    changePassword,
     forgotPassword,
     login,
     logout,
+    me,
     refreshToken,
     resendVerificationEmail,
     resetPassword,
@@ -15,6 +17,18 @@ const router = Router();
 
 router.post('/login', authLimiter, login);
 router.post('/logout', verifyJWT, logout);
+
+// Who am I — the user, their company membership and, for a candidate, how far
+// through their profile they are. One call, because a client needs all of it
+// before it can render anything and the parts live in three collections.
+router.get('/me', verifyJWT, me);
+
+// Changing a password from inside a session, as opposed to /reset-password,
+// which is for someone who cannot get into one. Rate limited like login: it
+// takes the current password, so a stolen cookie must not also buy unlimited
+// guesses at it.
+router.post('/change-password', authLimiter, verifyJWT, changePassword);
+
 // no verifyJWT — access token may be expired
 router.post('/refresh-token', authLimiter, refreshToken);
 

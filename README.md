@@ -231,6 +231,8 @@ Auth is **httpOnly cookies**, not `Authorization` headers — send credentialed 
 | ------ | ----------------------- | ------ | -------------------------------------------------------------- |
 | POST   | `/login`                | Public | Rate limited. Sets `token` cookie.                             |
 | POST   | `/logout`               | Auth   | Revokes **all** existing tokens                                |
+| GET    | `/me`                   | Auth   | User + company membership + profile completion, in one call    |
+| POST   | `/change-password`      | Auth   | `{ currentPassword, newPassword }`. Keeps this session, ends the rest |
 | POST   | `/refresh-token`        | Public | Rotates the refresh token                                      |
 | POST   | `/forgot-password`      | Public | Always 200, same message — never says whether the email exists |
 | POST   | `/reset-password`       | Public | `{ token, password }`. Signs every session out.                |
@@ -245,12 +247,22 @@ hour, verification links 24 hours, and requesting a new one retires the previous
 endpoint that mails any address you name is both a spam relay and a way to test which
 addresses have accounts.
 
+`GET /me` is the one call a client needs before it can render a signed-in view: the user,
+the company they belong to and their role in it, and — for a candidate — how complete
+their profile is. `membership` is `null` for candidates and platform admins. It is read
+from the same record that authorises the company routes, so it cannot report access the
+API would refuse.
+
+`/change-password` is for someone who is signed in; `/forgot-password` is for someone who
+is not. Both revoke every other session, but a change hands the caller a fresh cookie pair
+rather than signing them out of the browser they are using — a reset does not, because
+fear of compromise is the reason to reset.
+
 ### Candidate — `/candidate`
 
 | Method | Path         | Access    |
 | ------ | ------------ | --------- |
 | POST   | `/register`  | Public    |
-| GET    | `/`          | Auth      |
 
 ### Candidate profile — `/candidate/profile` *(candidate only)*
 
@@ -285,6 +297,7 @@ addresses have accounts.
 | Method | Path                            | Access             |
 | ------ | ------------------------------- | ------------------ |
 | POST   | `/create`                       | Recruiter — **verified email** |
+| GET    | `/me`                           | Active member — your own company, no id needed |
 | GET    | `/members`                      | Active member      |
 | GET    | `/members/recruiter`            | Active member      |
 | POST   | `/create-admin`                 | OWNER — **verified email** |
@@ -353,6 +366,7 @@ addresses have accounts.
 | Reset enumeration      | `/forgot-password` returns one fixed 200 for every address, and mail failures are swallowed so they can't leak it either. |
 | Reset link safety      | 32 random bytes, stored SHA-256 hashed, single-use via an atomic `findOneAndDelete`, expiring in 1 hour.      |
 | Reset ⇒ full logout    | A reset bumps `tokenVersion` and drops the stored refresh token, so an attacker's live session dies with it.  |
+| Change ⇒ others out    | A change from inside a session revokes every *other* session and reissues this one, so the safe habit does not sign you out of the browser you are in. |
 | Email ownership        | Registration only claims an address; `isEmailVerified` flips solely on a link clicked in that inbox.          |
 | Unverified accounts    | Creating a company, applying to a job and creating teammate accounts require a verified address; browsing, profile building and drafting stay open. Verifying lifts the gate on the next request — no re-login. |
 | Brute force            | Login: 10 attempts / 15 min (successes don't count). Registration: 20 / hour. Mail-sending endpoints: 5 / hour. Global ceiling: 300 / 15 min. |

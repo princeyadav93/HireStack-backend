@@ -1,7 +1,15 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { User, IUser } from '../models/user.model';
-import { LoginInput, RefreshPayload, TOKEN_TYPE } from '../types/auth.types';
+import { CompanyMember } from '../models/companyMember.model';
+import { CandidateProfile } from '../models/candidateProfile.model';
+import { Company } from '../models/company.model';
+import {
+    CurrentUser,
+    LoginInput,
+    RefreshPayload,
+    TOKEN_TYPE,
+} from '../types/auth.types';
 import { ENV } from '../config/env';
 import { logger } from '../config/logger';
 import { HTTP_STATUS } from '../constants';
@@ -174,6 +182,57 @@ export const refreshTokenService = async (
     return { accessToken, refreshToken };
 };
 
+/**
+ * Everything a client needs to render a signed-in shell, in one call.
+ *
+ * The parts live in three collections, so the alternative is two or three
+ * round trips before a navbar can be drawn — and no endpoint returns the
+ * caller's own company, so a client would have to find it in a list and hold
+ * on to the id. That is the habit this exists to prevent: company scope is
+ * supposed to come from the membership record, not from something the client
+ * remembered.
+ *
+ * The membership read here is the same record `verifyCompanyMember` trusts, so
+ * what this reports and what the API will actually authorise cannot disagree.
+ */
+export const getCurrentUserService = async (
+    user: IUser,
+): Promise<CurrentUser> => {
+    // Both are point lookups on indexed fields. The profile one is skipped for
+    // anyone who cannot have a profile rather than querying for a guaranteed
+    // miss; membership is not, because nothing in the schema stops a candidate
+    // from holding one and reporting it wrongly would be worse than a lookup.
+    const [membership, profile] = await Promise.all([
+        CompanyMember.findOne({ userId: user._id }).lean(),
+        user.role === 'candidate'
+            ? CandidateProfile.findOne({ user: user._id })
+                  .select('profileCompletion')
+                  .lean()
+            : null,
+    ]);
+
+    const company = membership
+        ? await Company.findById(membership.companyId)
+              .select('name status')
+              .lean()
+        : null;
+
+    return {
+        user,
+        membership:
+            membership && company
+                ? {
+                      companyId: membership.companyId.toString(),
+                      companyName: company.name,
+                      companyStatus: company.status,
+                      role: membership.role,
+                      isActive: membership.status,
+                  }
+                : null,
+        profileCompletion: profile?.profileCompletion ?? null,
+    };
+};
+
 // ─── Email verification ──────────────────────────────────────
 
 /**
@@ -282,4 +341,74 @@ export const resetPasswordService = async (
     // Not a courtesy: this is how someone finds out their account was taken
     // over by a person who could read their email.
     await sendQuietly(passwordChangedEmail(user.email, user.name));
+};
+
+/**
+ * Change a password from inside a live session.
+ *
+ * Differs from a reset in one deliberate way: the caller stays logged in. A
+ * reset is what someone does when they fear compromise, so ending every
+ * session — including the one asking — is the point of it. A routine change is
+ * not that, and signing someone out of the browser they are typing in would
+ * make the safe habit the annoying one. Every *other* session still dies; the
+ * caller is simply handed a replacement pair on the way out.
+ */
+export const changePasswordService = async (
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+): Promise<{ accessToken: string; refreshToken: string }> => {
+    const user = await User.findById(userId).select('+password');
+
+    if (!user) {
+        throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+    }
+
+    // No dummy compare and no shared message here, unlike login: the caller is
+    // already authenticated, so there is no account left to enumerate and
+    // saying which half is wrong costs nothing.
+    if (!(await user.isPasswordCorrect(currentPassword))) {
+        throw new ApiError(
+            HTTP_STATUS.UNAUTHORIZED,
+            'Current password is incorrect',
+        );
+    }
+
+    // Otherwise the revocation below fires, every other device is signed out,
+    // and nothing about the account actually changed.
+    if (await user.isPasswordCorrect(newPassword)) {
+        throw new ApiError(
+            HTTP_STATUS.BAD_REQUEST,
+            'New password must be different from the current one',
+        );
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, ENV.SALTROUNDS);
+
+    const updated = await User.findByIdAndUpdate(
+        userId,
+        {
+            $set: { password: hashedPassword },
+            // Drops the stored refresh token so no other device can rotate its
+            // way back in, and retires every access token already issued.
+            $unset: { refreshToken: '' },
+            $inc: { tokenVersion: 1 },
+        },
+        { new: true, runValidators: true },
+    );
+
+    if (!updated) {
+        throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+    }
+
+    // Minted from the updated document, so the pair carries the bumped
+    // tokenVersion and survives the revocation it just caused. Doing this
+    // before the bump would mint a token the middleware immediately rejects.
+    const tokens = await generateAndStoreTokens(updated);
+
+    // Same reason as a reset: this is how someone finds out their account was
+    // taken over by whoever was holding their session.
+    await sendQuietly(passwordChangedEmail(updated.email, updated.name));
+
+    return tokens;
 };

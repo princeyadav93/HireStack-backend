@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import {
+    changePasswordService,
     forgotPasswordService,
+    getCurrentUserService,
     loginService,
     logoutService,
     refreshTokenService,
@@ -14,6 +16,7 @@ import {
     REFRESH_COOKIE_OPTIONS,
 } from '../constants';
 import {
+    ChangePasswordDTO,
     ForgotPasswordDTO,
     LoginDTO,
     ResetPasswordDTO,
@@ -47,6 +50,22 @@ export const logout = asyncHandler(
 
         res.status(HTTP_STATUS.OK).json(
             new ApiResponse(HTTP_STATUS.OK, null, 'Logged out successfully'),
+        );
+    },
+);
+
+export const me = asyncHandler(
+    async (req: Request, res: Response, _next: NextFunction) => {
+        if (!req.user) {
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+        }
+
+        // verifyJWT already reloaded the user, so this adds the company and
+        // profile context around it rather than fetching it again.
+        const data = await getCurrentUserService(req.user);
+
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(HTTP_STATUS.OK, data, 'Current user retrieved'),
         );
     },
 );
@@ -140,6 +159,39 @@ export const resetPassword = asyncHandler(
                 HTTP_STATUS.OK,
                 null,
                 'Password updated. Please log in again.',
+            ),
+        );
+    },
+);
+
+export const changePassword = asyncHandler(
+    async (req: Request, res: Response, _next: NextFunction) => {
+        if (!req.user) {
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+        }
+
+        const { currentPassword, newPassword } = ChangePasswordDTO.parse(
+            req.body,
+        );
+
+        const { accessToken, refreshToken: newRefreshToken } =
+            await changePasswordService(
+                req.user._id.toString(),
+                currentPassword,
+                newPassword,
+            );
+
+        // The service bumped tokenVersion, which revoked the very cookie this
+        // request arrived on. Overwriting both is what keeps the caller signed
+        // in while every other device is signed out.
+        res.cookie('token', accessToken, COOKIE_OPTIONS);
+        res.cookie('refreshToken', newRefreshToken, REFRESH_COOKIE_OPTIONS);
+
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                null,
+                'Password updated. Any other devices have been signed out.',
             ),
         );
     },

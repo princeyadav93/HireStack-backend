@@ -1,3 +1,7 @@
+import { CompanyMemberRole } from './companyMember.types';
+import { CompanyStatus } from './company.types';
+import { IUser } from './user.types';
+
 /**
  * Authentication Types
  */
@@ -96,4 +100,30 @@ export interface CookieOptions {
     secure: boolean;
     sameSite: 'strict' | 'lax' | 'none';
     maxAge: number;
+}
+
+/**
+ * What `GET /auth/me` answers.
+ *
+ * Deliberately assembled from three collections into one response: a client
+ * needs all of it before it can draw a signed-in shell, and making it fetch
+ * the pieces separately means inferring the company from a list endpoint —
+ * the shape that ends with a company id travelling in a URL.
+ */
+export interface CurrentUserMembership {
+    companyId: string;
+    companyName: string;
+    /** Jobs cannot be published until this is `approved`. */
+    companyStatus: CompanyStatus;
+    role: CompanyMemberRole;
+    /** False once an owner or admin has blocked the member. */
+    isActive: boolean;
+}
+
+export interface CurrentUser {
+    user: IUser;
+    /** Null for a candidate or a platform admin — neither belongs to one. */
+    membership: CurrentUserMembership | null;
+    /** Candidates only; nothing computes a completion figure for anyone else. */
+    profileCompletion: number | null;
 }
