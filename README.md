@@ -284,11 +284,11 @@ addresses have accounts.
 
 | Method | Path                            | Access             |
 | ------ | ------------------------------- | ------------------ |
-| POST   | `/create`                       | Recruiter          |
+| POST   | `/create`                       | Recruiter — **verified email** |
 | GET    | `/members`                      | Active member      |
 | GET    | `/members/recruiter`            | Active member      |
-| POST   | `/create-admin`                 | OWNER              |
-| POST   | `/create-recruiter`             | OWNER / ADMIN      |
+| POST   | `/create-admin`                 | OWNER — **verified email** |
+| POST   | `/create-recruiter`             | OWNER / ADMIN — **verified email** |
 | DELETE | `/admins/:adminId`              | OWNER              |
 | DELETE | `/recruiters/:recruiterId`      | OWNER / ADMIN      |
 | PATCH  | `/block/member/:memberId`       | OWNER / ADMIN      |
@@ -325,7 +325,7 @@ addresses have accounts.
 | POST   | `/:jobId/publish`      | Company member | Requires an **approved** company      |
 | POST   | `/:jobId/close`        | Company member |                                       |
 | DELETE | `/:jobId`              | OWNER / ADMIN  | Soft delete                           |
-| POST   | `/:jobId/apply`        | Candidate      | Requires a résumé on file             |
+| POST   | `/:jobId/apply`        | Candidate      | Requires a résumé on file and a **verified email** |
 | GET    | `/:jobId/applications` | Company member | The pipeline for that job             |
 
 **Public board filters:** `search`, `skills` (comma-separated), `employmentType`,
@@ -354,6 +354,7 @@ addresses have accounts.
 | Reset link safety      | 32 random bytes, stored SHA-256 hashed, single-use via an atomic `findOneAndDelete`, expiring in 1 hour.      |
 | Reset ⇒ full logout    | A reset bumps `tokenVersion` and drops the stored refresh token, so an attacker's live session dies with it.  |
 | Email ownership        | Registration only claims an address; `isEmailVerified` flips solely on a link clicked in that inbox.          |
+| Unverified accounts    | Creating a company, applying to a job and creating teammate accounts require a verified address; browsing, profile building and drafting stay open. Verifying lifts the gate on the next request — no re-login. |
 | Brute force            | Login: 10 attempts / 15 min (successes don't count). Registration: 20 / hour. Mail-sending endpoints: 5 / hour. Global ceiling: 300 / 15 min. |
 | Cross-tenant access    | Company scope comes from the DB membership record, never the URL. Foreign records read as 404.                |
 | Privilege escalation   | `POST /admin/register` requires an existing admin. The first is seeded from the CLI.                          |

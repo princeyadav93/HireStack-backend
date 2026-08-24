@@ -576,10 +576,11 @@ export const openApiDocument = {
                 tags: ['Company'],
                 summary: 'Create a company',
                 description:
-                    'The calling recruiter becomes its OWNER. The company starts `pending` and cannot publish jobs until a platform admin approves it.',
+                    'The calling recruiter becomes its OWNER. The company starts `pending` and cannot publish jobs until a platform admin approves it. Requires a verified email address — a company is a claim about a real organisation.',
                 requestBody: jsonBody('CreateCompany'),
                 responses: {
                     ...created('Company created, pending approval.'),
+                    403: { $ref: '#/components/responses/Forbidden' },
                     409: {
                         description: 'A company with this name already exists.',
                         content: { 'application/json': { schema: ref('ApiError') } },
@@ -611,6 +612,8 @@ export const openApiDocument = {
             post: {
                 tags: ['Company'],
                 summary: 'Add a company admin (OWNER only)',
+                description:
+                    'The caller must have a verified email address: this creates a login for someone else.',
                 requestBody: jsonBody('CreateCompanyAdmin'),
                 responses: {
                     ...created('Admin created.'),
@@ -622,6 +625,8 @@ export const openApiDocument = {
             post: {
                 tags: ['Company'],
                 summary: 'Add a company recruiter (OWNER or ADMIN)',
+                description:
+                    'The caller must have a verified email address: this creates a login for someone else.',
                 requestBody: jsonBody('CreateCompanyRecruiter'),
                 responses: {
                     ...created('Recruiter created.'),
@@ -964,12 +969,13 @@ export const openApiDocument = {
                 tags: ['Applications'],
                 summary: 'Apply to a job (candidate)',
                 description:
-                    'Requires a résumé on the profile. The application and the job\'s counter are written in one transaction, and a unique `(jobId, candidateId)` index makes double-applying impossible even under a race.',
+                    'Requires a résumé on the profile and a verified email address — a recruiter is going to reply to it. The application and the job\'s counter are written in one transaction, and a unique `(jobId, candidateId)` index makes double-applying impossible even under a race.',
                 parameters: [pathParam('jobId', 'Job id.')],
                 requestBody: jsonBody('ApplyToJob', false),
                 responses: {
                     ...created('Application submitted.'),
                     400: { $ref: '#/components/responses/BadRequest' },
+                    403: { $ref: '#/components/responses/Forbidden' },
                     404: { $ref: '#/components/responses/NotFound' },
                     409: {
                         description: 'Already applied to this job.',

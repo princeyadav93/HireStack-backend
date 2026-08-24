@@ -1,6 +1,9 @@
 // src/routes/companyowner.routes.ts
 import express from 'express';
-import { verifyJWT } from '../middleware/auth.middleware';
+import {
+    verifyJWT,
+    requireVerifiedEmail,
+} from '../middleware/auth.middleware';
 import { verifyRecruiter } from '../middleware/roleVerification.middleware';
 import {
     verifyCompanyMember,
@@ -22,8 +25,18 @@ import { upload } from '../middleware/upload';
 const router = express.Router();
 
 // POST /company/create
-// Global recruiter creates a company → becomes OWNER
-router.post('/create', verifyJWT, verifyRecruiter, createCompanyController);
+// Global recruiter creates a company → becomes OWNER.
+// A company is a claim about a real organisation, so the claimant has to have
+// proved the address. requireVerifiedEmail sits *after* the role check on this
+// and the two routes below: a caller who could never perform the action should
+// be told that, not sent to their inbox to earn a second 403.
+router.post(
+    '/create',
+    verifyJWT,
+    verifyRecruiter,
+    requireVerifiedEmail,
+    createCompanyController,
+);
 
 // POST /company/create-admin
 // OWNER creates an admin for their company
@@ -32,6 +45,7 @@ router.post(
     verifyJWT,
     verifyCompanyMember,
     verifyCompanyOwner,
+    requireVerifiedEmail,
     createAdminController,
 );
 
@@ -42,6 +56,7 @@ router.post(
     verifyJWT,
     verifyCompanyMember,
     verifyCompanyOwnerOrAdmin,
+    requireVerifiedEmail,
     createRecruiterController,
 );
 
