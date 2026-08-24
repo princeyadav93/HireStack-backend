@@ -1,5 +1,8 @@
 import express from 'express';
-import { verifyJWT } from '../middleware/auth.middleware';
+import {
+    verifyJWT,
+    requireVerifiedEmail,
+} from '../middleware/auth.middleware';
 import { verifyCandidate } from '../middleware/roleVerification.middleware';
 import {
     verifyCompanyMember,
@@ -76,8 +79,15 @@ router.delete(
 
 // ─── Applications against a job ──────────────────────────────────────────
 
-// POST /jobs/:jobId/apply — candidates only
-router.post('/:jobId/apply', verifyJWT, verifyCandidate, applyToJobController);
+// POST /jobs/:jobId/apply — candidates only, and only with a verified address:
+// a recruiter is going to reply to it, so it has to reach the applicant.
+router.post(
+    '/:jobId/apply',
+    verifyJWT,
+    verifyCandidate,
+    requireVerifiedEmail,
+    applyToJobController,
+);
 
 // GET /jobs/:jobId/applications — the hiring pipeline, company-scoped
 router.get(

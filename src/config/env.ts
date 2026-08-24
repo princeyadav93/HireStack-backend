@@ -41,6 +41,41 @@ function optionalEnv(key: string): string {
     return process.env[key]?.trim() ?? '';
 }
 
+/**
+ * How many proxy hops sit between the internet and this process.
+ *
+ * Configurable because the right value is a property of the deployment, not of
+ * the code, and it cannot be known until the thing is actually deployed:
+ * Render's load balancer alone is 1, a Vercel rewrite in front of it is 2,
+ * Cloudflare in front of that is 3. Getting it wrong does not raise an error —
+ * it silently makes every request look like it came from the same address, so
+ * all users share one rate-limit bucket and the 5-per-hour email limiter
+ * becomes 5 per hour for the entire platform.
+ *
+ * Measure rather than guess: `ip` is on every request log line (see
+ * logger.ts), so call the API from a known address and compare.
+ *
+ * Validated as a non-negative integer specifically so `TRUST_PROXY=true`
+ * fails at boot instead of at runtime. Express accepts `true` and it is the
+ * one value that must never be used: it trusts the whole caller-supplied
+ * X-Forwarded-For chain, so anyone can forge a header, get a fresh bucket per
+ * request, and walk past every limiter.
+ */
+function parseTrustProxy(): number {
+    const raw = getEnv('TRUST_PROXY', '1');
+    const hops = Number(raw);
+
+    if (!Number.isInteger(hops) || hops < 0) {
+        throw new ApiError(
+            HTTP_STATUS.BAD_REQUEST,
+            `TRUST_PROXY must be a non-negative integer — it is a hop count, ` +
+                `not a boolean. Got "${raw}".`,
+        );
+    }
+
+    return hops;
+}
+
 export const ENV = {
     PORT: getEnv('PORT', '3000'),
     MONGODB_URI: getEnv('MONGODB_URI'),
@@ -53,6 +88,9 @@ export const ENV = {
     CLOUDINARY_API_SECRET: getEnv('CLOUDINARY_API_SECRET'),
     NODE_ENV: getEnv('NODE_ENV', 'development'),
     SALTROUNDS: parseInt(getEnv('SALTROUNDS')),
+
+    // Number of proxy hops in front of the app — see parseTrustProxy above.
+    TRUST_PROXY: parseTrustProxy(),
 
     // Blank means "let logger.ts pick by environment". Set it to raise or lower
     // verbosity on a deployed instance without a code change — the usual reason

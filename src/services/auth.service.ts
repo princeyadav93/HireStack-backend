@@ -33,7 +33,17 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 // different message for each turns login into an account-enumeration oracle.
 const INVALID_CREDENTIALS = 'Invalid email or password';
 
-const generateAndStoreTokens = async (
+/**
+ * Mint the pair and record the refresh token's hash against the user.
+ *
+ * Exported because registration needs the identical pair. It used to sign its
+ * own with a bare `jwt.sign({ userId })`, which produced a token carrying
+ * neither `type` nor `tokenVersion` — so verifyJWT rejected the cookie
+ * registration had just set and every new user's first request was a 401.
+ * Three call sites minting tokens three ways is how that survived; there is
+ * now one way.
+ */
+export const generateAndStoreTokens = async (
     user: IUser,
 ): Promise<{ accessToken: string; refreshToken: string }> => {
     const accessToken = user.accessTokenGenerate();

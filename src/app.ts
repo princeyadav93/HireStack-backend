@@ -26,7 +26,7 @@ import applicationRouter from './routes/application.route';
 const app: Application = express();
 
 /**
- * Trust exactly one proxy hop.
+ * Trust exactly `TRUST_PROXY` proxy hops (default 1).
  *
  * On Render, Railway, Fly or behind nginx, nothing reaches this process
  * directly — the platform's load balancer does, and it puts the real client
@@ -35,14 +35,21 @@ const app: Application = express();
  * the whole internet shares one bucket: 300 requests in 15 minutes across all
  * users, then everyone is locked out together.
  *
- * `1`, not `true`. `true` trusts the entire forwarded chain, which is
+ * A count, never `true`. `true` trusts the entire forwarded chain, which is
  * caller-supplied — anyone can send `X-Forwarded-For: <random>` and get a fresh
- * rate limit bucket per request, making the limiters decorative. `1` reads only
- * the hop the platform itself appended, which is the one address a client
- * cannot forge. Raise it only if you add another proxy in front (Cloudflare in
- * front of Render is two).
+ * rate limit bucket per request, making the limiters decorative. A count reads
+ * only the hops the infrastructure itself appended, which are the addresses a
+ * client cannot forge. `env.ts` rejects a non-integer at boot so `true` cannot
+ * be set here by accident.
+ *
+ * It is an environment variable because the correct number is a fact about the
+ * deployment that cannot be known from the code: Render's balancer alone is 1,
+ * a Vercel rewrite in front of it (see the deployment notes in README.md) is 2,
+ * Cloudflare in front of that is 3. Nothing errors when it is wrong — the
+ * symptom is every user sharing one rate-limit bucket — so measure it against
+ * the `ip` field on a real request log line rather than guessing.
  */
-app.set('trust proxy', 1);
+app.set('trust proxy', ENV.TRUST_PROXY);
 
 // Logging goes first, before anything that can reject a request.
 //

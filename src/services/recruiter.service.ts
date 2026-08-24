@@ -3,17 +3,20 @@ import { RegisterInput } from '../types/auth.types';
 import { HTTP_STATUS } from '../constants';
 import { ApiError } from '../utils/ApiError';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import { ENV } from '../config/env';
 import { logger } from '../config/logger';
 import mongoose from 'mongoose';
 import { createRecruiterProfile } from '../utils/profileHelper';
-import { sendVerificationEmail } from './auth.service';
+import { generateAndStoreTokens, sendVerificationEmail } from './auth.service';
 import { IUserSafe } from '../types/user.types';
 
 export const registerRecruiterService = async (
     data: RegisterInput,
-): Promise<{ user: IUserSafe; token: string }> => {
+): Promise<{
+    user: IUserSafe;
+    accessToken: string;
+    refreshToken: string;
+}> => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -67,13 +70,13 @@ export const registerRecruiterService = async (
             ),
         );
 
-        const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {
-            expiresIn: '1d',
-        });
+        // See candidate.service: one helper mints the pair, so registration and
+        // login hand back tokens the middleware actually accepts.
+        const { accessToken, refreshToken } = await generateAndStoreTokens(user);
 
         const { password: _, ...userSafe } = userDocs[0].toObject();
 
-        return { user: userSafe as IUserSafe, token };
+        return { user: userSafe as IUserSafe, accessToken, refreshToken };
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
