@@ -302,8 +302,8 @@ fear of compromise is the reason to reset.
 | GET    | `/members/recruiter`            | Active member      |
 | POST   | `/create-admin`                 | OWNER — **verified email** |
 | POST   | `/create-recruiter`             | OWNER / ADMIN — **verified email** |
-| DELETE | `/admins/:adminId`              | OWNER              |
-| DELETE | `/recruiters/:recruiterId`      | OWNER / ADMIN      |
+| DELETE | `/admins/:adminId`              | OWNER — removes the membership, not the account |
+| DELETE | `/recruiters/:recruiterId`      | OWNER / ADMIN — removes the membership, not the account |
 | PATCH  | `/block/member/:memberId`       | OWNER / ADMIN      |
 | PATCH  | `/unblock/member/:memberId`     | OWNER / ADMIN      |
 | GET    | `/:companyId`                   | Auth               |
