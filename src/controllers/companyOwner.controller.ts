@@ -193,6 +193,44 @@ export const getCompanyController = asyncHandler(
     },
 );
 
+/**
+ * GET /company/me — the caller's own company, without having to know its id.
+ *
+ * `req.companyId` is read off the membership record by `verifyCompanyMember`,
+ * so this is the one company read with no id in the request to tamper with.
+ * It also removes the reason a client would ever hold on to a company id: the
+ * sibling `GET /:companyId` is the route that has to re-check ownership,
+ * precisely because its id came from outside.
+ */
+export const getMyCompanyController = asyncHandler(
+    async (req: Request, res: Response) => {
+        const userId = req.user?._id?.toString();
+
+        if (!userId) {
+            throw new ApiError(HTTP_STATUS.UNAUTHORIZED, 'Unauthorized');
+        }
+
+        // verifyCompanyMember sets this or throws, so a miss means the route
+        // was wired without it — not anything the caller did.
+        if (!req.companyId) {
+            throw new ApiError(
+                HTTP_STATUS.FORBIDDEN,
+                'You are not a member of any company',
+            );
+        }
+
+        const company = await getCompanyService(req.companyId, userId);
+
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(
+                HTTP_STATUS.OK,
+                formatCompanyForRole(company, req.user!.role),
+                'Company retrieved successfully',
+            ),
+        );
+    },
+);
+
 export const updateCompanyController = asyncHandler(
     async (req: Request, res: Response) => {
         const userId = req.user?._id?.toString();

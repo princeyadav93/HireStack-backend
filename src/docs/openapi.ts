@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
     RegisterDTO,
     LoginDTO,
+    ChangePasswordDTO,
     ForgotPasswordDTO,
     ResetPasswordDTO,
     VerifyEmailDTO,
@@ -199,6 +200,7 @@ export const openApiDocument = {
             Login: schemaOf(LoginDTO),
             ForgotPassword: schemaOf(ForgotPasswordDTO),
             ResetPassword: schemaOf(ResetPasswordDTO),
+            ChangePassword: schemaOf(ChangePasswordDTO),
             VerifyEmail: schemaOf(VerifyEmailDTO),
             CreateCompany: schemaOf(CreateCompanyDTO),
             UpdateCompany: schemaOf(UpdateCompanyDTO),
@@ -313,6 +315,37 @@ export const openApiDocument = {
                 },
             },
         },
+        '/auth/me': {
+            get: {
+                tags: ['Auth'],
+                summary: 'Get the signed-in user',
+                description:
+                    'The user, their company membership and — for a candidate — their profile completion, in one call. A client needs all of it to render a signed-in shell and the parts live in three collections. `membership` is null for candidates and platform admins. It is read from the same record that authorises company routes, so it cannot disagree with what the API will actually allow.',
+                responses: {
+                    ...ok('Current user returned.'),
+                    401: { $ref: '#/components/responses/Unauthorized' },
+                },
+            },
+        },
+        '/auth/change-password': {
+            post: {
+                tags: ['Auth'],
+                summary: 'Change your password',
+                description:
+                    'For someone who is signed in — `/auth/forgot-password` is for someone who is not. Every other session is revoked; this one is issued a fresh cookie pair instead, so a routine change does not sign you out of the browser you are using. Rate limited to 10 attempts per 15 minutes, because it accepts the current password.',
+                requestBody: jsonBody('ChangePassword'),
+                responses: {
+                    ...ok('Password updated; auth cookies replaced.'),
+                    400: { $ref: '#/components/responses/BadRequest' },
+                    401: {
+                        description:
+                            'Not signed in, or the current password is wrong.',
+                        content: { 'application/json': { schema: ref('ApiError') } },
+                    },
+                    429: { $ref: '#/components/responses/TooManyRequests' },
+                },
+            },
+        },
         '/auth/refresh-token': {
             post: {
                 tags: ['Auth'],
@@ -399,16 +432,6 @@ export const openApiDocument = {
                         content: { 'application/json': { schema: ref('ApiError') } },
                     },
                     429: { $ref: '#/components/responses/TooManyRequests' },
-                },
-            },
-        },
-        '/candidate': {
-            get: {
-                tags: ['Candidate'],
-                summary: 'Get the signed-in candidate',
-                responses: {
-                    ...ok('Candidate returned.'),
-                    401: { $ref: '#/components/responses/Unauthorized' },
                 },
             },
         },
@@ -585,6 +608,19 @@ export const openApiDocument = {
                         description: 'A company with this name already exists.',
                         content: { 'application/json': { schema: ref('ApiError') } },
                     },
+                },
+            },
+        },
+        '/company/me': {
+            get: {
+                tags: ['Company'],
+                summary: "Get the caller's own company",
+                description:
+                    'Resolved from the membership record, so there is no id in the request to tamper with. `GET /{companyId}` still exists for reading a company by id, and re-checks access precisely because that id came from outside.',
+                responses: {
+                    ...ok('Company returned.'),
+                    403: { $ref: '#/components/responses/Forbidden' },
+                    404: { $ref: '#/components/responses/NotFound' },
                 },
             },
         },

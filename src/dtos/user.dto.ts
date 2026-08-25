@@ -55,3 +55,16 @@ export const VerifyEmailDTO = z
         token: TokenField,
     })
     .strict();
+
+export const ChangePasswordDTO = z
+    .object({
+        currentPassword: z.string().min(1, 'Current password is required'),
+
+        // Same rule as registration and reset: changing a password must not be
+        // a way around the policy.
+        newPassword: z
+            .string()
+            .min(8, 'Password must be at least 8 characters')
+            .max(100, 'Password too long'),
+    })
+    .strict();

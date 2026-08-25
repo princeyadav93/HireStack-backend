@@ -40,12 +40,12 @@ describe('POST /candidate/register', () => {
         expect(res.status).toBe(201);
 
         const cookies = res.headers['set-cookie'] as unknown as string[];
-        const me = await api().get('/candidate').set('Cookie', cookies);
+        const me = await api().get('/auth/me').set('Cookie', cookies);
 
         // The whole point: the cookie registration set is one the auth
         // middleware accepts.
         expect(me.status).toBe(200);
-        expect(me.body.data.email).toBe(CANDIDATE.email);
+        expect(me.body.data.user.email).toBe(CANDIDATE.email);
     });
 
     it('sets both the access and the refresh cookie', async () => {
@@ -91,13 +91,13 @@ describe('POST /recruiter/register', () => {
 
         const cookies = res.headers['set-cookie'] as unknown as string[];
 
-        // /candidate is role-agnostic — it only requires a valid access token,
-        // so it works as a "does this session resolve to a user" probe here.
-        const me = await api().get('/candidate').set('Cookie', cookies);
+        // /auth/me only requires a valid access token, so it works as a
+        // "does this session resolve to a user" probe for any role.
+        const me = await api().get('/auth/me').set('Cookie', cookies);
 
         expect(me.status).toBe(200);
-        expect(me.body.data.email).toBe(RECRUITER.email);
-        expect(me.body.data.role).toBe('recruiter');
+        expect(me.body.data.user.email).toBe(RECRUITER.email);
+        expect(me.body.data.user.role).toBe('recruiter');
     });
 
     it('sets both the access and the refresh cookie', async () => {
@@ -118,7 +118,7 @@ describe('the session registration issues', () => {
 
         // Logout bumps tokenVersion. A token minted without that claim would
         // survive this, which is the other half of the original bug.
-        const after = await api().get('/candidate').set('Cookie', cookies);
+        const after = await api().get('/auth/me').set('Cookie', cookies);
 
         expect(after.status).toBe(401);
     });
