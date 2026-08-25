@@ -11,8 +11,17 @@ import {
     unblockMemberController,
     getCompanyRecruitersController,
 } from '../controllers/companyMembers.controller';
+import { getMyCompanyController } from '../controllers/companyOwner.controller';
 
 const router = express.Router();
+
+// GET /company/me
+// The caller's own company. It lives in this router rather than next to the
+// other company routes for the same reason /members does: companyOwnerRouter
+// owns `GET /:companyId`, which matches any single segment, and this router is
+// mounted first. Declared beside its sibling `GET /:companyId` it would only
+// ever be reached as a company literally named "me".
+router.get('/me', verifyJWT, verifyCompanyMember, getMyCompanyController);
 
 // GET /company/members
 // Any ACTIVE member can view company members

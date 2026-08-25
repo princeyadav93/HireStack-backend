@@ -1,17 +1,12 @@
 import express from 'express';
-import {
-    getCandidateController,
-    registerCandidate,
-} from '../controllers/candidate.controller';
-import { verifyJWT } from '../middleware/auth.middleware';
+import { registerCandidate } from '../controllers/candidate.controller';
 import { registerLimiter } from '../middleware/rateLimit.middleware';
 
 const router = express.Router();
 
-// Candidate registration only
-// Login/Logout handled by global auth routes
-router.get('/', verifyJWT, getCandidateController);
-
+// Registration only. Login and logout are global auth routes, and "who am I"
+// is GET /auth/me — this router used to answer that too, from a handler that
+// just echoed req.user and worked for every role despite the candidate path.
 router.post('/register', registerLimiter, registerCandidate);
 
 export default router;
