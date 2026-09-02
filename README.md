@@ -302,8 +302,8 @@ fear of compromise is the reason to reset.
 | GET    | `/members/recruiter`            | Active member      |
 | POST   | `/create-admin`                 | OWNER — **verified email** |
 | POST   | `/create-recruiter`             | OWNER / ADMIN — **verified email** |
-| DELETE | `/admins/:adminId`              | OWNER              |
-| DELETE | `/recruiters/:recruiterId`      | OWNER / ADMIN      |
+| DELETE | `/admins/:adminId`              | OWNER — removes the membership, not the account |
+| DELETE | `/recruiters/:recruiterId`      | OWNER / ADMIN — removes the membership, not the account |
 | PATCH  | `/block/member/:memberId`       | OWNER / ADMIN      |
 | PATCH  | `/unblock/member/:memberId`     | OWNER / ADMIN      |
 | GET    | `/:companyId`                   | Auth               |
@@ -342,7 +342,12 @@ fear of compromise is the reason to reset.
 | GET    | `/:jobId/applications` | Company member | The pipeline for that job             |
 
 **Public board filters:** `search`, `skills` (comma-separated), `employmentType`,
-`workMode`, `city`, `minExperience`, `maxSalary`, `page`, `limit`.
+`workMode`, `city`, `maxExperience`, `minSalary`, `page`, `limit`.
+
+Both numeric filters are read from the candidate's side: `maxExperience` is the most a job
+may ask for, so passing your own years returns the postings you qualify for, and
+`minSalary` is the least you will take — a job matches if either end of its published
+range clears it.
 
 ### Applications — `/applications`
 
