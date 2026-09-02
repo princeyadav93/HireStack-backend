@@ -215,11 +215,27 @@ export const listPublicJobsService = async (
     if (filters.workMode) match.workMode = filters.workMode;
     if (filters.city) match['location.city'] = filters.city;
     if (filters.skills?.length) match.skills = { $in: filters.skills };
-    if (filters.minExperience !== undefined) {
-        match['experience.min'] = { $lte: filters.minExperience };
+    if (filters.maxExperience !== undefined) {
+        // The job's *required* minimum, not its ceiling: someone with five
+        // years wants every posting asking for five or fewer.
+        match['experience.min'] = { $lte: filters.maxExperience };
     }
-    if (filters.maxSalary !== undefined) {
-        match['salary.min'] = { $lte: filters.maxSalary };
+    if (filters.minSalary !== undefined) {
+        // A posting clears the floor if the top of its range does — or, where
+        // no top was published, its base. Testing `salary.max` alone would
+        // drop every open-ended "25 LPA and up" listing, which is exactly the
+        // kind a candidate filtering on pay is looking for.
+        //
+        // This lives in $and because the search filter below owns the
+        // top-level $or, and a second assignment would silently replace it.
+        match.$and = [
+            {
+                $or: [
+                    { 'salary.max': { $gte: filters.minSalary } },
+                    { 'salary.min': { $gte: filters.minSalary } },
+                ],
+            },
+        ];
     }
     if (filters.search) {
         const pattern = escapeRegex(filters.search);

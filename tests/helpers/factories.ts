@@ -148,11 +148,20 @@ export const createJob = async ({
     createdBy,
     status = JobStatus.PUBLISHED,
     title = 'Backend Engineer',
+    skills,
+    // Both ranges stay unset by default. The board reads an absent salary as
+    // "not published" rather than "pays nothing", so a filter test has to be
+    // able to build a job either way.
+    experience,
+    salary,
 }: {
     companyId: Types.ObjectId;
     createdBy: Types.ObjectId;
     status?: JobStatus;
     title?: string;
+    skills?: string[];
+    experience?: { min?: number; max?: number };
+    salary?: { min?: number; max?: number };
 }) =>
     Job.create({
         title,
@@ -162,5 +171,8 @@ export const createJob = async ({
         createdBy,
         employmentType: EmploymentType.FULL_TIME,
         status,
+        ...(skills && { skills }),
+        ...(experience && { experience }),
+        ...(salary && { salary }),
         ...(status === JobStatus.PUBLISHED && { publishedAt: new Date() }),
     });
