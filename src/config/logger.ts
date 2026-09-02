@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
+import type { Request } from 'express';
 import pino from 'pino';
-import pinoHttp from 'pino-http';
+import pinoHttp, { type Options } from 'pino-http';
 import { ENV } from './env';
 
 /**
@@ -58,9 +59,15 @@ export const logger = pino({
     formatters: { level: (label) => ({ level: label }) },
 });
 
-export const httpLogger = pinoHttp({
-    logger,
-
+/**
+ * Everything about the access log except which logger receives the line.
+ *
+ * Split out so a test can mount the identical middleware against a stream it
+ * can read: `logger` is silent under NODE_ENV=test and writes straight to a
+ * file descriptor otherwise, so there is no other way to assert on what a line
+ * actually contains.
+ */
+export const httpLoggerOptions = {
     /**
      * The request id is the entire reason for doing this.
      *
@@ -101,6 +108,23 @@ export const httpLogger = pinoHttp({
         ignore: (req) => req.url === '/',
     },
 
+    // Attached when the response finishes, which is the only moment req.user
+    // exists: httpLogger is mounted first in app.ts, ahead of verifyJWT.
+    //
+    // The obvious home for this is the `req` serializer below, and it does not
+    // work there. pino-http serialises the request once on the way in, before
+    // any other middleware has run, and reuses that result — so `req.raw.user`
+    // is always undefined and the field silently never appears. Verified, not
+    // assumed; it is exactly the kind of always-null field that reads as
+    // working.
+    //
+    // This is the cheapest identity the API has: no schema change and no extra
+    // write, and it answers "who closed that job" for every action whose own
+    // record never captured an actor. Anonymous routes omit the field.
+    customProps: (req) => ({
+        userId: (req as unknown as Request).user?._id?.toString(),
+    }),
+
     // The defaults serialise the entire req/res object. These are the fields
     // anyone actually reads, and a smaller line is a cheaper line once a log
     // provider starts charging by volume.
@@ -115,4 +139,6 @@ export const httpLogger = pinoHttp({
         }),
         res: (res) => ({ statusCode: res.statusCode }),
     },
-});
+} satisfies Options;
+
+export const httpLogger = pinoHttp({ logger, ...httpLoggerOptions });

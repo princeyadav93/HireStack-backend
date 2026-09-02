@@ -82,8 +82,12 @@ export const JobFilterDTO = z.object({
     employmentType: z.enum(EmploymentType).optional(),
     workMode: z.enum(WorkMode).optional(),
     city: z.string().trim().toLowerCase().optional(),
-    minExperience: z.coerce.number().min(0).max(50).optional(),
-    maxSalary: z.coerce.number().min(0).optional(),
+    // Both names are written from the candidate's side of the search box, and
+    // both used to say the opposite of what they did. `maxExperience` is the
+    // most a job may demand — pass your own years and you get the postings you
+    // qualify for. `minSalary` is the least you are willing to take.
+    maxExperience: z.coerce.number().min(0).max(50).optional(),
+    minSalary: z.coerce.number().min(0).optional(),
 });
 
 export type JobFilterType = z.infer<typeof JobFilterDTO>;
