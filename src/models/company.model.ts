@@ -54,6 +54,26 @@ const companySchema = new Schema<ICompany>(
             enum: ['pending', 'approved', 'rejected', 'suspended'],
             default: 'pending',
         },
+        // The review decision, recorded rather than implied. `status` says a
+        // company was approved or rejected; on its own it cannot say by whom,
+        // when, or what the founder should fix. Both moves are terminal — an
+        // approved company cannot be rejected and a rejected one cannot be
+        // approved — so nothing later recomputes what is not written here.
+        approvedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+        },
+        approvedAt: Date,
+        rejectedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+        },
+        rejectedAt: Date,
+        rejectionReason: {
+            type: String,
+            trim: true,
+            maxlength: 500,
+        },
         suspensionDetails: {
             isSuspended: {
                 type: Boolean,

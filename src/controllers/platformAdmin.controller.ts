@@ -5,6 +5,7 @@ import { ApiResponse } from '../utils/ApiResponse';
 import { ApiError } from '../utils/ApiError';
 import { formatCompanyForRole } from '../utils/formatCompanyResponse';
 import { getPagination } from '../utils/pagination';
+import { RejectCompanyDTO } from '../dtos/company.dto';
 import {
     getPendingCompaniesService,
     approveCompanyService,
@@ -58,7 +59,10 @@ export const approveCompanyController = asyncHandler(
         const user = req.user!;
         const userRole = user.role;
 
-        const company = await approveCompanyService(companyId);
+        const company = await approveCompanyService(
+            companyId,
+            user._id.toString(),
+        );
 
         res.status(HTTP_STATUS.OK).json(
             new ApiResponse(
@@ -78,11 +82,18 @@ export const rejectCompanyController = asyncHandler(
         const companyId = Array.isArray(req.params.companyId)
             ? req.params.companyId[0]
             : req.params.companyId;
-        const { reason } = req.body;
+        // The body is optional on this route, and Express 5 leaves `req.body`
+        // undefined when no parser matched — a bare POST would fail the parse
+        // rather than reach the service.
+        const { reason } = RejectCompanyDTO.parse(req.body ?? {});
         const user = req.user!;
         const userRole = user.role;
 
-        const company = await rejectCompanyService(companyId, reason);
+        const company = await rejectCompanyService(
+            companyId,
+            user._id.toString(),
+            reason,
+        );
 
         res.status(HTTP_STATUS.OK).json(
             new ApiResponse(
@@ -293,7 +304,10 @@ export const deleteCompanyController = asyncHandler(
             );
         }
 
-        const result = await deleteCompanyService(companyId);
+        const result = await deleteCompanyService(
+            companyId,
+            req.user!._id.toString(),
+        );
 
         res.status(HTTP_STATUS.OK).json(
             new ApiResponse(HTTP_STATUS.OK, result, result.message),

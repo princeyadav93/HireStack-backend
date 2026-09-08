@@ -12,6 +12,7 @@ import {
     CreateAdminDTO,
     CreateRecruiterDTO,
     UpdateCompanyDTO,
+    RejectCompanyDTO,
 } from '../dtos/company.dto';
 import {
     CreateJobDTO,
@@ -204,6 +205,7 @@ export const openApiDocument = {
             VerifyEmail: schemaOf(VerifyEmailDTO),
             CreateCompany: schemaOf(CreateCompanyDTO),
             UpdateCompany: schemaOf(UpdateCompanyDTO),
+            RejectCompany: schemaOf(RejectCompanyDTO),
             CreateCompanyAdmin: schemaOf(CreateAdminDTO),
             CreateCompanyRecruiter: schemaOf(CreateRecruiterDTO),
             CreateJob: schemaOf(CreateJobDTO),
@@ -811,7 +813,8 @@ export const openApiDocument = {
             post: {
                 tags: ['Platform admin'],
                 summary: 'Approve a company',
-                description: 'Approval is what allows the company to publish jobs.',
+                description:
+                    'Approval is what allows the company to publish jobs. The reviewing admin and the time are recorded on the company; both are visible to platform admins only.',
                 parameters: [pathParam('companyId', 'Company id.')],
                 responses: {
                     ...ok('Company approved.'),
@@ -823,7 +826,10 @@ export const openApiDocument = {
             post: {
                 tags: ['Platform admin'],
                 summary: 'Reject a company',
+                description:
+                    'Terminal: a rejected company can never be approved. The reason is stored alongside the reviewing admin and the time, so the decision can still be explained to the owner afterwards — the owner sees the reason, not the reviewer.',
                 parameters: [pathParam('companyId', 'Company id.')],
+                requestBody: jsonBody('RejectCompany', false),
                 responses: {
                     ...ok('Company rejected.'),
                     404: { $ref: '#/components/responses/NotFound' },
@@ -875,7 +881,7 @@ export const openApiDocument = {
                 tags: ['Platform admin'],
                 summary: 'Soft-delete a company',
                 description:
-                    'Sets `isArchived`; nothing is physically removed, so applications stay readable for audit.',
+                    'Sets `isArchived`, `archivedAt` and `archivedBy`; nothing is physically removed, so applications stay readable for audit.',
                 parameters: [pathParam('companyId', 'Company id.')],
                 responses: {
                     ...ok('Company archived.'),
