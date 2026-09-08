@@ -75,6 +75,26 @@ export const UpdateCompanyDTO = z.object({
 export type UpdateCompanyType = z.infer<typeof UpdateCompanyDTO>;
 
 /**
+ * A platform admin's rejection of a company.
+ *
+ * The reason stays optional because rejecting without one is a legitimate call
+ * — but when it is given it is the only thing that can ever answer the
+ * founder's "what was wrong with our application?". Rejection is terminal, so
+ * there is no second pass in which the reason could be reconstructed. It used
+ * to be read off the body and dropped on the floor by the service.
+ */
+export const RejectCompanyDTO = z.object({
+    reason: z
+        .string()
+        .trim()
+        .min(1, 'Reason cannot be empty')
+        .max(500, 'Reason must not exceed 500 characters')
+        .optional(),
+});
+
+export type RejectCompanyType = z.infer<typeof RejectCompanyDTO>;
+
+/**
  * A company logo upload.
  *
  * Multer enforces the size ceiling first and rejects anything larger before the
