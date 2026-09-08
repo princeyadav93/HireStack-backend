@@ -41,10 +41,15 @@ export const getPendingCompaniesService = async (
 /**
  * Approve a pending company
  * Changes status from pending to approved
+ *
+ * @param adminId the reviewing admin, stamped onto the company. Approval flips
+ *                the owner's `isPlatformVerified` — a trust decision — and used
+ *                to leave no record of who made it.
  */
-// src/services/admin.service.ts
-
-export const approveCompanyService = async (companyId: string) => {
+export const approveCompanyService = async (
+    companyId: string,
+    adminId: string,
+) => {
     if (!Types.ObjectId.isValid(companyId)) {
         throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid company ID');
     }
@@ -78,6 +83,8 @@ export const approveCompanyService = async (companyId: string) => {
             }
 
             company.status = 'approved';
+            company.approvedBy = new Types.ObjectId(adminId);
+            company.approvedAt = new Date();
             await company.save({ session });
 
             const ownerProfile = await RecruiterProfile.findOneAndUpdate(
@@ -112,9 +119,14 @@ export const approveCompanyService = async (companyId: string) => {
 /**
  * Reject a pending company
  * Changes status from pending to rejected with optional reason
+ *
+ * Rejection is terminal — `approveCompanyService` refuses to approve a rejected
+ * company — so the reason, the admin and the time are the whole record of why a
+ * founder's application died. The reason was accepted and discarded before.
  */
 export const rejectCompanyService = async (
     companyId: string,
+    adminId: string,
     reason?: string,
 ) => {
     if (!Types.ObjectId.isValid(companyId)) {
@@ -142,6 +154,9 @@ export const rejectCompanyService = async (
     }
 
     company.status = 'rejected';
+    company.rejectionReason = reason;
+    company.rejectedBy = new Types.ObjectId(adminId);
+    company.rejectedAt = new Date();
     await company.save();
 
     return company;
@@ -439,8 +454,14 @@ export const getAllUsersService = async (
 /**
  * Soft delete company (PLATFORM ADMIN ONLY)
  * Sets isArchived: true, doesn't hard delete
+ *
+ * The most destructive thing this API does, so `archivedBy` — declared on the
+ * model since the beginning and never written — is filled in here.
  */
-export const deleteCompanyService = async (companyId: string) => {
+export const deleteCompanyService = async (
+    companyId: string,
+    adminId: string,
+) => {
     if (!Types.ObjectId.isValid(companyId)) {
         throw new ApiError(HTTP_STATUS.BAD_REQUEST, 'Invalid company ID');
     }
@@ -465,6 +486,7 @@ export const deleteCompanyService = async (companyId: string) => {
             // Soft delete company
             company.isArchived = true;
             company.archivedAt = new Date();
+            company.archivedBy = new Types.ObjectId(adminId);
             await company.save({ session });
 
             // Revoke all members' platform verification

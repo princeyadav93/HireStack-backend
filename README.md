@@ -124,6 +124,9 @@ without signing up for anything.
 2. They call `POST /company/create`, which creates the company (`status: pending`) and
    makes them its **OWNER**.
 3. A platform admin reviews it at `GET /admin/companies/pending` and approves or rejects it.
+   Either way the decision is stamped onto the company — who made it, when, and for a
+   rejection the reason they gave. Rejection is terminal, so that reason is the only answer
+   the owner will ever get; the owner reads it, but not which admin wrote it.
 4. Only an **approved** company can publish jobs. Suspension flips the status back, and
    its jobs drop off the public board immediately — no rewriting of job records needed.
 
@@ -317,13 +320,13 @@ fear of compromise is the reason to reset.
 | POST   | `/register`                           | Creates another admin        |
 | GET    | `/companies/pending`                  |                              |
 | GET    | `/companies`                          | Audit view                   |
-| POST   | `/companies/approve/:companyId`       |                              |
-| POST   | `/companies/:companyId/reject`        |                              |
+| POST   | `/companies/approve/:companyId`       | Records `approvedBy` / `approvedAt` |
+| POST   | `/companies/:companyId/reject`        | Body `{ reason? }` (≤ 500 chars), stored with the reviewer and time |
 | POST   | `/companies/:companyId/suspend`       |                              |
 | POST   | `/companies/:companyId/unsuspend`     |                              |
 | GET    | `/platform/companies`                 | Paginated                    |
 | GET    | `/platform/users`                     | Paginated                    |
-| DELETE | `/platform/companies/:companyId`      | Soft delete                  |
+| DELETE | `/platform/companies/:companyId`      | Soft delete — records `archivedBy` |
 
 ### Jobs — `/jobs`
 

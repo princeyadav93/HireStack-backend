@@ -48,6 +48,11 @@ export interface ICompany extends Document {
     recruiterCount: number;
     createdBy: Types.ObjectId; // OWNER of company
     status: CompanyStatus;
+    approvedBy?: Types.ObjectId;
+    approvedAt?: Date;
+    rejectedBy?: Types.ObjectId;
+    rejectedAt?: Date;
+    rejectionReason?: string;
     members: Types.ObjectId[]; // Denormalized cache: only ACTIVE members
     isArchived: boolean; // Soft delete
     archivedAt?: Date;
