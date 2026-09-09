@@ -626,6 +626,34 @@ export const openApiDocument = {
                 },
             },
         },
+        '/company/applications': {
+            get: {
+                tags: ['Company'],
+                summary: 'Every application to your company (paginated)',
+                description:
+                    "The company-wide pipeline, newest first, across every job. `GET /jobs/{jobId}/applications` answers \"who is in play for this role\"; this answers \"who applied today\" without fetching one pipeline per open role. Readable by any active member.",
+                parameters: [
+                    ...queryFrom(ApplicationFilterDTO),
+                    ...PAGINATION_PARAMS,
+                ],
+                responses: {
+                    ...ok('Applications returned.'),
+                    403: { $ref: '#/components/responses/Forbidden' },
+                },
+            },
+        },
+        '/company/dashboard': {
+            get: {
+                tags: ['Company'],
+                summary: 'Job and application counts for your company',
+                description:
+                    'Jobs grouped by lifecycle status (archived ones excluded) and applications grouped by pipeline stage. Every status the API knows about is present, at zero when nothing matched, so a client never has to tell an empty bucket apart from a missing key.',
+                responses: {
+                    ...ok('Counts returned.'),
+                    403: { $ref: '#/components/responses/Forbidden' },
+                },
+            },
+        },
         '/company/members': {
             get: {
                 tags: ['Company'],

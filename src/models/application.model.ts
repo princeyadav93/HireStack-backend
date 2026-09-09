@@ -63,6 +63,12 @@ applicationSchema.index({ jobId: 1, candidateId: 1 }, { unique: true });
 applicationSchema.index({ jobId: 1, status: 1, createdAt: -1 });
 applicationSchema.index({ companyId: 1, status: 1 });
 
+// The company-wide list is ordered by date and is usually unfiltered — "who
+// applied today" across every open role. The funnel index above leads on
+// status, so it cannot produce that order: Mongo would read every application
+// the company has ever received and sort them in memory.
+applicationSchema.index({ companyId: 1, createdAt: -1 });
+
 // "My applications" for a candidate.
 applicationSchema.index({ candidateId: 1, createdAt: -1 });
 
