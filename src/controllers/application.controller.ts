@@ -14,6 +14,7 @@ import {
     applyToJobService,
     listMyApplicationsService,
     listJobApplicationsService,
+    listCompanyApplicationsService,
     getApplicationService,
     updateApplicationStatusService,
 } from '../services/application.service';
@@ -84,6 +85,31 @@ export const listJobApplicationsController = asyncHandler(
 
         const result = await listJobApplicationsService(
             getParam(req, 'jobId'),
+            companyId,
+            filters,
+            page,
+            limit,
+        );
+
+        res.status(HTTP_STATUS.OK).json(
+            new ApiResponse(HTTP_STATUS.OK, result, 'Applications retrieved'),
+        );
+    },
+);
+
+/**
+ * Serves `GET /company/applications`. It lives with the other application
+ * controllers rather than the company ones because what it returns is
+ * applications — the company is only the scope, and that scope arrives the same
+ * way it does everywhere else, off the membership record.
+ */
+export const listCompanyApplicationsController = asyncHandler(
+    async (req: Request, res: Response) => {
+        const companyId = requireCompanyId(req);
+        const { page, limit } = getPagination(req.query);
+        const filters = ApplicationFilterDTO.parse(req.query);
+
+        const result = await listCompanyApplicationsService(
             companyId,
             filters,
             page,

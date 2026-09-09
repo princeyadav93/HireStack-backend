@@ -12,6 +12,8 @@ import {
     getCompanyRecruitersController,
 } from '../controllers/companyMembers.controller';
 import { getMyCompanyController } from '../controllers/companyOwner.controller';
+import { listCompanyApplicationsController } from '../controllers/application.controller';
+import { getCompanyDashboardController } from '../controllers/companyDashboard.controller';
 
 const router = express.Router();
 
@@ -37,6 +39,30 @@ router.get(
     verifyJWT,
     verifyCompanyMember,
     getCompanyRecruitersController,
+);
+
+// GET /company/applications
+// Every application to the company, across every job, newest first.
+// Optional ?status= narrows it to one stage of the pipeline.
+//
+// GET /company/dashboard
+// Job counts by status and application counts by stage, in one call.
+//
+// Both sit in this router for the same reason /me and /members do:
+// companyOwnerRouter owns `GET /:companyId`, which swallows any single
+// segment, and it is mounted second.
+router.get(
+    '/applications',
+    verifyJWT,
+    verifyCompanyMember,
+    listCompanyApplicationsController,
+);
+
+router.get(
+    '/dashboard',
+    verifyJWT,
+    verifyCompanyMember,
+    getCompanyDashboardController,
 );
 
 // verifyCompanyOwnerOrAdmin reads req.companyMember, which only
