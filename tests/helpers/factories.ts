@@ -6,7 +6,9 @@ import { Company } from '../../src/models/company.model';
 import { CompanyMember } from '../../src/models/companyMember.model';
 import { CandidateProfile } from '../../src/models/candidateProfile.model';
 import { Job } from '../../src/models/job.model';
+import { Application } from '../../src/models/application.model';
 import {
+    ApplicationStatus,
     CompanyRole,
     EmploymentType,
     JobStatus,
@@ -176,3 +178,56 @@ export const createJob = async ({
         ...(salary && { salary }),
         ...(status === JobStatus.PUBLISHED && { publishedAt: new Date() }),
     });
+
+/**
+ * An application row, written straight through the model like every other
+ * fixture here.
+ *
+ * `POST /jobs/:jobId/apply` only ever produces APPLIED, so building a
+ * SHORTLISTED row through the API would mean walking the transition table —
+ * coupling a test about listing to rules it is not exercising.
+ *
+ * `createdAt` is applied as a second write through the driver, not the model.
+ * Ordering tests need distinct dates — two rows written in the same millisecond
+ * sort arbitrarily — and `timestamps: true` marks `createdAt` immutable, so
+ * Mongoose strips it out of an update and reports success having changed
+ * nothing.
+ */
+export const createApplication = async ({
+    jobId,
+    candidateId,
+    companyId,
+    status = ApplicationStatus.APPLIED,
+    createdAt,
+}: {
+    jobId: Types.ObjectId;
+    candidateId: Types.ObjectId;
+    companyId: Types.ObjectId;
+    status?: ApplicationStatus;
+    createdAt?: Date;
+}) => {
+    const application = await Application.create({
+        jobId,
+        candidateId,
+        companyId,
+        status,
+        resumeUrl: 'https://res.cloudinary.com/test/raw/upload/resume.pdf',
+        resumeFileName: 'resume.pdf',
+        statusHistory: [
+            {
+                status: ApplicationStatus.APPLIED,
+                changedBy: candidateId,
+                changedAt: new Date(),
+            },
+        ],
+    });
+
+    if (createdAt) {
+        await Application.collection.updateOne(
+            { _id: application._id },
+            { $set: { createdAt } },
+        );
+    }
+
+    return application;
+};

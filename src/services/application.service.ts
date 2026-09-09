@@ -206,6 +206,55 @@ export const listJobApplicationsService = async (
 };
 
 /**
+ * Every application to the caller's company, newest first.
+ *
+ * The per-job pipeline answers "who is in play for this role". This answers
+ * "who applied today", which a recruiter with twenty open roles could otherwise
+ * only get by fetching twenty pipelines and merging them in the browser.
+ *
+ * Scope is the caller's `companyId`, read off their membership record by
+ * verifyCompanyMember — there is no company id in the request to tamper with,
+ * and no job id either, so this is the one application query that spans roles.
+ */
+export const listCompanyApplicationsService = async (
+    companyId: string,
+    filters: ApplicationFilterType,
+    page: number,
+    limit: number,
+) => {
+    assertValidId(companyId, 'company ID');
+
+    const query: Record<string, unknown> = {
+        companyId: new Types.ObjectId(companyId),
+    };
+
+    if (filters.status) query.status = filters.status;
+
+    const skip = (page - 1) * limit;
+
+    const [applications, total] = await Promise.all([
+        Application.find(query)
+            // The job title is what makes a cross-role list readable at all —
+            // without it every row is an opaque pair of ids.
+            .populate('jobId', 'title employmentType workMode location status')
+            .populate('candidateId', 'name email')
+            // statusHistory grows with every move and no list view renders it;
+            // the detail endpoint is where the trail belongs.
+            .select('-statusHistory')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Application.countDocuments(query),
+    ]);
+
+    return {
+        applications,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    };
+};
+
+/**
  * One application, readable by the candidate who submitted it or by an active
  * member of the company that owns it.
  */

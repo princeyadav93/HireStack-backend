@@ -301,6 +301,8 @@ fear of compromise is the reason to reset.
 | ------ | ------------------------------- | ------------------ |
 | POST   | `/create`                       | Recruiter — **verified email** |
 | GET    | `/me`                           | Active member — your own company, no id needed |
+| GET    | `/applications`                 | Active member — every application to the company, newest first; `?status=` narrows to one stage |
+| GET    | `/dashboard`                    | Active member — job counts by status and application counts by stage |
 | GET    | `/members`                      | Active member      |
 | GET    | `/members/recruiter`            | Active member      |
 | POST   | `/create-admin`                 | OWNER — **verified email** |
